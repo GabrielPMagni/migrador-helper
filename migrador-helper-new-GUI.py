@@ -52,13 +52,15 @@ def main():
         '-cd',
         '--codificacao',
         metavar='Codificação do arquivo de origem:',
-        choices=['cp1252', 'utf_8']
+        choices=['cp1252', 'utf_8'],
+        default='utf_8'
     )
 
     de_arquivo.add_argument(
         '-de',
         '--delimitador',
-        metavar='Delimitador do arquivo CSV'
+        metavar='Delimitador do arquivo CSV',
+        help='Padrão: ;'
     )
 
     # Aba de Diretórios
@@ -89,13 +91,15 @@ def main():
         '-cd',
         '--codificacao',
         metavar='Codificação do arquivo de origem:',
-        choices=['cp1252', 'utf_8']
+        choices=['cp1252', 'utf_8'],
+        default='utf_8'
     )
 
     de_diretorio.add_argument(
         '-de',
         '--delimitador',
-        metavar='Delimitador do arquivo CSV'
+        metavar='Delimitador do arquivo CSV',
+        help='Padrão: ;'
     )
 
 
@@ -103,7 +107,9 @@ def main():
 
     try:
         if args.command == 'convert_arq':
-            for arq in args.input_files:
+            print('Iniciado processo...')
+            for index, arq in enumerate(args.input_files):
+                print('Arquivo #', index)
                 cod = args.codificacao
                 if args.delimitador != None:
                     d = args.delimitador
@@ -112,8 +118,12 @@ def main():
                 arquivo = codecs.open(arq, 'r', encoding=cod, errors='ignore')
                 mOrto = ajustaOrto8DAT
                 mOrto(arquivo, args.output_file, args.csv, cod, d)
+            else:
+                print('Concluído')
         elif args.command == 'convert_dir':
-            for arq in ls(args.dir):
+            print('Iniciado processo...')
+            for index, arq in enumerate(ls(args.dir)):
+                print('Arquivo #', index)
                 cod = args.codificacao
                 if args.delimitador != None:
                     d = args.delimitador
@@ -123,6 +133,8 @@ def main():
                 arquivo = codecs.open(caminho, 'r', encoding=cod, errors='ignore')
                 mOrto = ajustaOrto8DAT
                 mOrto(arquivo, args.output_file, args.csv, cod, d)
+            else:
+                print('Concluído')
     except Exception as identifier:
         print('Erro ao abrir o arquivo inicial: ', str(identifier))
 
@@ -169,26 +181,13 @@ class ajustaOrto8DAT:
             nome = self.arquivo.name
             nome = nome.split('\\')[-1]
             nome_id = nome.split('.')[-2]
-            print(nome_id)
             nome_id = regex.search('(\d+)', nome_id).group(0)
-            print(nome_id)
 
             for num_linha, linha in enumerate(self.__novoarquivo_temp):
-                if num_linha == 0:
-                    self.__arquivoFinal.write('ID'+self.d+'DATA'+self.d+'ANAMNESE')
                 if regex.match('^(\d\d\/\d\d\/\d\d)', linha.strip()) != None:
                     data = regex.match('^(\d\d\/\d\d\/\d\d)', linha.strip())
                     self.__arquivoFinal.write('\n'+nome_id+self.d+data.group(0)+self.d+linha.replace('\n', '<br><br>')[0:30000])
                 
-
-
-                # if regex.match('^(TOTAL)|^(total)', linha.strip()) != None:
-                #     if num_linha == 1 or num_linha % 2 == 0:
-                #         self.__arquivoFinal.write('\n'+nome+self.d+linha.replace('\n', '<br><br>'))
-                #     else:
-                #         self.__arquivoFinal.write(linha.replace('\n', '<br><br>'))
-
-
 
 
     def formatarArquivo(self):
