@@ -184,10 +184,15 @@ class ajustaOrto8DAT:
             nome_id = regex.search('(\d+)', nome_id).group(0)
 
             for num_linha, linha in enumerate(self.__novoarquivo_temp):
-                if regex.match('^(\d\d\/\d\d\/\d\d)', linha.strip()) != None:
+                if regex.match('^(\d\d\/\d\d\/\d\d\d\d)', linha.strip()) != None:
+                    data = regex.match('(\d\d)\/(\d\d)\/\d\d(\d\d)', linha.strip())
+                    data1 = data.group(1)+'/'+data.group(2)+'/'+data.group(3)
+                    print('DATA FORMATADA: '+ data1)
+                    self.__arquivoFinal.write('\n'+nome_id+self.d+data1+self.d+linha.replace('\n', '<br><br>')[0:30000])
+                elif regex.match('^(\d\d\/\d\d\/\d\d)', linha.strip()) != None:
                     data = regex.match('^(\d\d\/\d\d\/\d\d)', linha.strip())
                     self.__arquivoFinal.write('\n'+nome_id+self.d+data.group(0)+self.d+linha.replace('\n', '<br><br>')[0:30000])
-                
+
 
 
     def formatarArquivo(self):
