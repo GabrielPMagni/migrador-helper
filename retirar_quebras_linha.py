@@ -7,7 +7,7 @@ import re as regex
 import codecs
 
 encoding = 'utf-8'
-
+reg = r'((\s){1,}(\d{1,},))'
 def arquivoInicial():
     """
     Solicita o nome do arquivo a ser verificado e retorna o mesmo ou falso em caso em caso de erro.
@@ -28,8 +28,8 @@ tmp4 = ''
 tmp5 = ''
 
 linha = arquivo.read()
-if regex.search(r'((\s){1,}(\d{1,},))', linha) != None:
-    tmp1 = regex.sub(r'((\s){1,}(\d{1,},))', r'\g<2>|\g<3>', linha)
+if regex.search(reg, linha) != None:
+    tmp1 = regex.sub(reg, r'\g<2>|\g<3>', linha)
     linha = None
     tmp5 = regex.sub(r'\n|\r', '', tmp1)
     tmp1 = None
