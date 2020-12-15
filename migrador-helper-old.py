@@ -1,15 +1,20 @@
 import re as regex
 from os import remove as rm
-import csv
 from random import random
 import codecs
+# utf-8
+# cp1252 
+# latin-1
+encoding = 'cp1252'
+delimitador2 = ','
+
 def arquivoInicial():
     """
     Solicita o nome do arquivo a ser verificado e retorna o mesmo ou falso em caso em caso de erro.
     """
     pergunta = input('Digite o nome do arquivo a ser verificado: \n\n\t>')
     try:
-        arquivo = codecs.open(pergunta, 'r', encoding='iso-8859-1', errors='replace')
+        arquivo = codecs.open(pergunta, 'r', encoding=encoding, errors='ignore')
         oqfzr = int(input('O que deseja fazer?\n1-Exportar CSV com um delimitador para CSV delimitar com vírgula'))
 
 
@@ -31,7 +36,7 @@ class ajustaOrto8DAT:
         self.__nomeTempFinal = 'temp_final.tmp'
         try:
             if (arquivoOrigem):                
-                self.__novoarquivo_temp2 = codecs.open(self.__nomeArquivoTemp2, 'w', encoding='iso-8859-1', errors='ignore')
+                self.__novoarquivo_temp2 = codecs.open(self.__nomeArquivoTemp2, 'w', encoding=encoding, errors='ignore')
                 self.arquivo = arquivoOrigem
             else:
                 return None
@@ -61,9 +66,9 @@ class ajustaOrto8DAT:
 
     def tratarEExportarParaCSVcomVirgula(self):
         try:
-            arqCSV = codecs.open(self.__nomeArquivoTemp2, 'r',  encoding='iso-8859-1', errors='ignore')
+            arqCSV = codecs.open(self.__nomeArquivoTemp2, 'r',  encoding=encoding, errors='ignore')
             arqCSVNovoNome = arqCSV.name+'novo.csv'
-            arqCSVNovo = codecs.open(arqCSVNovoNome, 'w',  encoding='iso-8859-1', errors='ignore')
+            arqCSVNovo = codecs.open(arqCSVNovoNome, 'w',  encoding=encoding, errors='ignore')
         except Exception as identifier:
             print('???', str(identifier))
         else:
@@ -75,7 +80,7 @@ class ajustaOrto8DAT:
             elif delimitador == '':
                 delimitador = ';'
             for linha in arqCSV:
-                tmp = linha.replace(delimitador, ',')
+                tmp = linha.replace(delimitador, delimitador2)
                 arqCSVNovo.write(tmp)
                 tmp = None
 
@@ -83,8 +88,8 @@ class ajustaOrto8DAT:
     def __finalizar(self):
         self.__nomeArquivoFinal = 'resultadoOrto'+str(random())+'.txt'
         try:
-            self.__arquivoFinal = codecs.open(self.__nomeArquivoFinal, 'w', encoding='iso-8859-1', errors='ignore')
-            self.__novoarquivo_temp = codecs.open(self.__nomeTempFinal, 'r', encoding='iso-8859-1', errors='ignore')
+            self.__arquivoFinal = codecs.open(self.__nomeArquivoFinal, 'w', encoding=encoding, errors='ignore')
+            self.__novoarquivo_temp = codecs.open(self.__nomeTempFinal, 'r', encoding=encoding, errors='ignore')
         except Exception as identifier:
             print('Erro ao finalizar: ', str(identifier))
         else:
@@ -98,8 +103,8 @@ class ajustaOrto8DAT:
                 
 
     def __temp_final(self):
-        self.__novoarquivo_temp2 = codecs.open(self.__nomeArquivoTemp2, 'r', encoding='iso-8859-1', errors='ignore')
-        self.__novoarquivo_temp = codecs.open(self.__nomeTempFinal, 'w', encoding='iso-8859-1', errors='ignore')
+        self.__novoarquivo_temp2 = codecs.open(self.__nomeArquivoTemp2, 'r', encoding=encoding, errors='ignore')
+        self.__novoarquivo_temp = codecs.open(self.__nomeTempFinal, 'w', encoding=encoding, errors='ignore')
         self.__conjuntoAnterior = ''
         for self.__linha_counter, self.__linha in enumerate(self.__novoarquivo_temp2):
             for self.__conjunto in self.__linha.split('\t'):
@@ -136,25 +141,30 @@ class ajustaOrto8DAT:
 
 
     def formatarArquivo(self):
-        if not self.arquivo.name.lower().endswith('.csv'):
-            self.__novo_arq_txt = regex.sub('\s{2,}[^\\n\w]', '\t', self.arquivo.read().replace('\n', '   '))
-        else:
-            self.__novo_arq_txt = self.arquivo.read()
-        self.__novo_arq_txt = regex.sub('[,´`ºª]', '.', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub('[ÚÙÛ]', 'U', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub('[úùû]', 'u', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub('[íìî¡]', 'i', self.__novo_arq_txt)
+
+
+        # if not self.arquivo.name.lower().endswith('.csv'):
+        #     self.__novo_arq_txt = regex.sub('\s{2,}[^\\n\w]', '\t', self.arquivo.read().replace('\n', '   '))
+        # else:
+        self.__novo_arq_txt = self.arquivo.read()
+        self.__novo_arq_txt = regex.sub('(Ã³)|(├Á)|(├\│)|(Ã´)|[óòõôö]', 'o', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub('(Ã£)|(Ã¢)|(Ã¡)|(├ú)|(├í)|[áàãâ]', 'a', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub('(├º)|(Ã§)|[ç]', 'c', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub('(Ã‡)|[Ç]', 'C', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub('(ÃŠ)|[ÚÙÛÜ]', 'U', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub('(Ãº)|(├║)|[úùûü]', 'u', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub('(├¡)|(Ã-)|[íìî]', 'i', self.__novo_arq_txt)
         self.__novo_arq_txt = regex.sub('[ÍÌÎ]', 'I', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub('[éèê]', 'e', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub('[ÉÈÊ]', 'E', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub('[ÓÒÕÔ]', 'O', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub('[óòõô]', 'o', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub('[áàãâ]', 'a', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub('[ÁÃÂÀÅ]', 'A', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub('[ç]', 'c', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub('[Ç]', 'C', self.__novo_arq_txt)
-        if not self.arquivo.name.lower().endswith('.csv'):
-            self.__novo_arq_txt = regex.sub('[^\w\s]', '', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub('(Ã©)|(├¬)|(├®)|[éèê]', 'e', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub('(Ã‰)|[ÉÈÊ]', 'E', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub('(Ã•)|(Ã“)|(Ã”)|[ÓÒÕÔÖ]', 'O', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub('(Âº)|[´`ºª]', '.', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub('(Ãƒ)|[ÁÃÂÀÅ]', 'A', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub('(Ã)|[^0-9a-zA-Z\s\/\.\,\;\"\$\<\>\&\*\(\)\[\]\{\}\=\+\-\#\_\%\!\?\@]|[½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅐⅛⅜⅝⅞⅑⅒↉⅟ ]', '', self.__novo_arq_txt)
+
+
+        # if not self.arquivo.name.lower().endswith('.csv'):
+        #     self.__novo_arq_txt = regex.sub('[^\d\w\s]', '', self.__novo_arq_txt)
         self.__novoarquivo_temp2.write(self.__novo_arq_txt)
         self.arquivo.close()
         self.__novoarquivo_temp2.close()

@@ -7,7 +7,8 @@ import re as regex
 import codecs
 
 encoding = 'utf-8'
-reg = r'((\s){1,}(\d{1,},))'
+# reg = r'((\s){1,}(\d{1,},))'
+reg = r'((.*\,\w{1,}(( )?(\w{1,})?){0,3}\n)(\d{1,}\,))'
 def arquivoInicial():
     """
     Solicita o nome do arquivo a ser verificado e retorna o mesmo ou falso em caso em caso de erro.
@@ -29,7 +30,7 @@ tmp5 = ''
 
 linha = arquivo.read()
 if regex.search(reg, linha) != None:
-    tmp1 = regex.sub(reg, r'\g<2>|\g<3>', linha)
+    tmp1 = regex.sub(reg, r'\g<2>|\g<6>', linha)
     linha = None
     tmp5 = regex.sub(r'\n|\r', '', tmp1)
     tmp1 = None
