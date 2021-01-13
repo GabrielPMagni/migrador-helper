@@ -2,3 +2,4 @@
 !migrador-helper*.py
 !retirar_quebras_linha.py
 !.gitignore
+!fillRHHourTable.py
