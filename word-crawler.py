@@ -1,5 +1,5 @@
 from random import random
-from os import listdir as ls, path, system
+from os import listdir as ls, path, popen
 from gooey import Gooey, GooeyParser
 from subprocess import Popen, PIPE
 from sys import platform, stderr, stdin, stdout
@@ -47,12 +47,12 @@ def main():
         gooey_options=dict(full_width=True)
     )
 
-    from_dir.add_argument(
-        'output_file',
-        widget="FileSaver",
-        metavar='Arquivo de saída:',
-        gooey_options=dict(wildcard="(*.txt)|*.txt", default_file='word-crawler.txt', full_width=True)
-    )
+    # from_dir.add_argument(
+    #     'output_file',
+    #     widget="FileSaver",
+    #     metavar='Arquivo de saída:',
+    #     gooey_options=dict(wildcard="(*.txt)|*.txt", default_file='word-crawler.txt', full_width=True)
+    # )
 
     args = parser.parse_args()
 
@@ -83,7 +83,7 @@ def search(file_list, search):
             continue
         else:
             found_array = []  # cria uma lista vazia e limpa após cada loop
-            result = system(cat + '\"'+file_name+'\"' + grep + search)  # abre arquivo como texto no terminal e filtra pela busca
+            result = popen(cat + '\"'+file_name+'\"' + grep + search).read()  # abre arquivo como texto no terminal e filtra pela busca
             if result != '':  # caso encontre algo executa príximos comandos
                 found_array.append(file_text.find(search))  # adiciona à lista index onde foi encontrado
                 found_array.append(search)   # adiciona texto encontrado
