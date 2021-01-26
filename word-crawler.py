@@ -1,15 +1,14 @@
 from random import random
 from os import listdir as ls, path, popen
 from gooey import Gooey, GooeyParser
-from subprocess import Popen, PIPE
-from sys import platform, stderr, stdin, stdout
+from sys import platform
 
 # global var
 items = []
 found_on = []
 if platform.startswith('win32') or platform.startswith('cygwin'):
     slash = '\\'
-    grep = ' | findstr '
+    grep = ' | find '
     cat = ' type '
 else:
     slash = '/'
@@ -17,11 +16,15 @@ else:
     cat = ' cat '
 
 @Gooey(
-    program_name = 'Migrador Discover',
-    program_description = 'Multi funções para ajudar em migrações de banco de dados.',
+    program_name = 'Word Crawler',
+    program_description = 'Busca palavra chave em arquivos listando subdiretórios.',
+    requires_shell=False,
+    show_success_modal=False,
+    show_failure_modal=True,
+    hide_progress_msg=True,
     default_size=(610, 580),
     navigation='TABBED',
-    menu=[{'name': 'Sobre', 'items': [{'type': 'AboutDialog', 'name': 'Sobre o Migrador Helper', 'menuTitle': 'Sobre', 'description': 'Na tentativa de facilitar a vida das migrações de banco de dados', 'version': '1.0',  'developer': 'Gabriel Peres Magni','website': 'https://github.com/GabrielPMagni'}]}]
+    menu=[{'name': 'Sobre', 'items': [{'type': 'AboutDialog', 'name': 'Sobre o Word Crawler', 'menuTitle': 'Sobre', 'description': 'Busca palavra chave em arquivos listando subdiretórios', 'version': '1.0',  'developer': 'Gabriel Peres Magni','website': 'https://github.com/GabrielPMagni'}]}]
 )
 
 def main():
@@ -34,35 +37,33 @@ def main():
 
     
     #  de diretório
-
     from_dir.add_argument(
         'input_text',
         metavar='Texto a ser procurado:',
+        widget='Textarea'
     )
 
     from_dir.add_argument(
         'dir',
-        metavar='Pasta a ser verificada',
+        metavar='Pasta a ser verificada:',
         widget="DirChooser",
         gooey_options=dict(full_width=True)
     )
 
-    # from_dir.add_argument(
-    #     'output_file',
-    #     widget="FileSaver",
-    #     metavar='Arquivo de saída:',
-    #     gooey_options=dict(wildcard="(*.txt)|*.txt", default_file='word-crawler.txt', full_width=True)
-    # )
-
     args = parser.parse_args()
 
-    if args.command == 'analyse_dir':
-        list_sub_dir(args.dir)
-        search(items, args.input_text)  # i = index, m = match
-        if len(found_on) > 0:
-            show_results()
-        else:
-            print('Nada encontrado')
+    try:
+        text = args.input_text
+    except UnicodeDecodeError:
+        print('Entrada de texto inválida')
+    else:
+        if args.command == 'analyse_dir':
+            list_sub_dir(args.dir)
+            search(items, text)  # i = index, m = match
+            if len(found_on) > 0:
+                show_results()
+            else:
+                print('Nada encontrado')
 
 
 def list_sub_dir(directory:str):  # lista subdiretórios e retorna lista com arquivos encontrados
@@ -83,10 +84,11 @@ def search(file_list, search):
             continue
         else:
             found_array = []  # cria uma lista vazia e limpa após cada loop
-            result = popen(cat + '\"'+file_name+'\"' + grep + search).read()  # abre arquivo como texto no terminal e filtra pela busca
+            result = popen(cat + '\"'+file_name+'\"' + grep + '\"'+search+'\"').read()  # abre arquivo como texto no terminal e filtra pela busca
             if result != '':  # caso encontre algo executa príximos comandos
                 found_array.append(file_text.find(search))  # adiciona à lista index onde foi encontrado
                 found_array.append(search)   # adiciona texto encontrado
+                found_array.append(file_name)   # adiciona texto encontrado
                 found_on.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
 
 
@@ -94,6 +96,7 @@ def show_results(): # exibição de resultados
     for item in found_on:
         model = """
         +------------------RESULTADOS------------------+
+        |Arquivo: :file.!
         |Index encontrado: :index.!
         |
         |Texto encontrado: :match.!
@@ -101,11 +104,9 @@ def show_results(): # exibição de resultados
         """
         model = model.replace(':index.!', str(item[0]+1))
         model = model.replace(':match.!', str(item[1]))
+        model = model.replace(':file.!', str(item[2]))
         print(model)
 
 if __name__ == '__main__':
     main()
     
-# --- fim lógica do software ---
-
-
