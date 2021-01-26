@@ -1,4 +1,5 @@
 *
-!migrador-helper*.py
+!migrador-*.py
 !retirar_quebras_linha.py
+!word-crawler.py
 !.gitignore
