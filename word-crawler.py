@@ -6,12 +6,11 @@ from sys import platform
 # global var
 items = []
 found_on = []
+debug = False
 if platform.startswith('win32') or platform.startswith('cygwin'):
-    slash = '\\'
     grep = ' | find '
     cat = ' type '
 else:
-    slash = '/'
     grep = ' | grep '
     cat = ' cat '
 
@@ -34,7 +33,6 @@ def main():
     from_dir = subs.add_parser(
         'analyse_dir', prog='Validar de Diretório',
     ).add_argument_group('')
-
     
     #  de diretório
     from_dir.add_argument(
@@ -50,37 +48,73 @@ def main():
         gooey_options=dict(full_width=True)
     )
 
+    from_dir.add_argument(
+        '--debug',
+        dest='debug',
+        metavar='Verbosidade:',
+        action='store_true'
+    )
+
     args = parser.parse_args()
 
     try:
         text = args.input_text
+        debug = args.debug
     except UnicodeDecodeError:
         print('Entrada de texto inválida')
     else:
         if args.command == 'analyse_dir':
-            list_sub_dir(args.dir)
-            search(items, text)  # i = index, m = match
+            list_sub_dir(args.dir, debug)
+            search(items, text, debug)  # i = index, m = match
             if len(found_on) > 0:
                 show_results()
             else:
                 print('Nada encontrado')
 
 
-def list_sub_dir(directory:str):  # lista subdiretórios e retorna lista com arquivos encontrados
-    for item in ls(directory):
-        d = path.join(directory, item)
-        if path.isdir(d):
-            list_sub_dir(d)
-        else:
-            items.append(str(d))
-    return items
+def list_sub_dir(directory:str, debug=False):  # lista subdiretórios e retorna lista com arquivos encontrados
+    if debug:
+        print('Listando diretórios...')
+    try:
+        for item in ls(directory):
+            d = path.join(directory, item)
+            if path.isdir(d):
+                if debug:
+                    print('Pasta encontrada')
+                list_sub_dir(d)
+            else:
+                if debug:
+                    print('Arquivo Encontrado')
+                items.append(str(d))
+    except PermissionError:
+        if debug:
+            print('Permissão Negada à Pasta')
+        exit(2)
+    except Exception as e:
+        if debug:
+            print('Erro não tratado list_sub_dir: '+str(e))
+        exit(1)
 
 
-def search(file_list, search):
-    for file_name in file_list:  # para cada arquivo encontrado
+def search(file_list, search, debug=False):
+    num_file = len(file_list)
+    if debug:
+        print('Procurando correspondências nos arquivos...')
+    for i, file_name in enumerate(file_list):  # para cada arquivo encontrado
+        print(str(i+1) + ' / ' + str(num_file))
         try:
             file_text = open(file_name, 'r').read() # lê arquivo completo e armazena texto em variável (caso seja binário, pula para o próximo)
         except UnicodeDecodeError:
+            if debug:
+                print('Unicode Decode Error (arquivo binário ou não texto)')
+            continue
+        except PermissionError:
+            if debug:
+                print('Permissão Negada ao Arquivo')
+            continue
+        except Exception as e:
+            if debug:
+                print('Erro não tratado search: '+str(e))
             continue
         else:
             found_array = []  # cria uma lista vazia e limpa após cada loop
@@ -93,19 +127,16 @@ def search(file_list, search):
 
 
 def show_results(): # exibição de resultados
+    num_found = len(found_on)
+    print('\n\n\n\n\n+------------------RESULTADOS------------------+')
+    print('> Total de arquivos com correspondencia: '+str(num_found))
     for item in found_on:
-        model = """
-        +------------------RESULTADOS------------------+
-        |Arquivo: :file.!
-        |Index encontrado: :index.!
-        |
-        |Texto encontrado: :match.!
-        +----------------------------------------------+
-        """
+        model = '|\n|\tArquivo: :file.!\n|\tIndex encontrado: :index.!\n|\n|\tTexto encontrado: :match.!\n|\n------------------------------------------------'
         model = model.replace(':index.!', str(item[0]+1))
         model = model.replace(':match.!', str(item[1]))
         model = model.replace(':file.!', str(item[2]))
         print(model)
+    print('+----------------------------------------------+')
 
 if __name__ == '__main__':
     main()
