@@ -1,5 +1,5 @@
 from random import random
-from os import listdir as ls, path, popen
+from os import listdir as ls, path, popen, stat
 from gooey import Gooey, GooeyParser
 from sys import platform
 
@@ -117,24 +117,29 @@ def search(file_list, search, debug=False):
                 print('Erro não tratado search: '+str(e))
             continue
         else:
-            found_array = []  # cria uma lista vazia e limpa após cada loop
+            found_array = {}  # cria um dicionário vazio e limpa após cada loop
             result = popen(cat + '\"'+file_name+'\"' + grep + '\"'+search+'\"').read()  # abre arquivo como texto no terminal e filtra pela busca
             if result != '':  # caso encontre algo executa príximos comandos
-                found_array.append(file_text.find(search))  # adiciona à lista index onde foi encontrado
-                found_array.append(search)   # adiciona texto encontrado
-                found_array.append(file_name)   # adiciona texto encontrado
+                found_array['index'] = file_text.find(search)  # adiciona à lista index onde foi encontrado
+                found_array['match'] = search  # adiciona texto encontrado
+                found_array['file_name'] = file_name  # adiciona texto encontrado
+                found_array['file_size'] = stat(file_name).st_size  # adiciona tamanho do arquivo
                 found_on.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
 
+def order_by_size(e):
+    return e['file_size']
 
 def show_results(): # exibição de resultados
+    found_on.sort(reverse=True, key=order_by_size)
     num_found = len(found_on)
     print('\n\n\n\n\n+------------------RESULTADOS------------------+')
     print('> Total de arquivos com correspondencia: '+str(num_found))
     for item in found_on:
-        model = '|\n|\tArquivo: :file.!\n|\tIndex encontrado: :index.!\n|\n|\tTexto encontrado: :match.!\n|\n------------------------------------------------'
-        model = model.replace(':index.!', str(item[0]+1))
-        model = model.replace(':match.!', str(item[1]))
-        model = model.replace(':file.!', str(item[2]))
+        model = '|\n|\tArquivo: :file.!\n|\tIndex encontrado: :index.!\n|\tTamanho do Arquivo (Bytes): :file_size.!\n|\tTexto encontrado: :match.!\n|\n------------------------------------------------'
+        model = model.replace(':index.!', str(item['index']))
+        model = model.replace(':match.!', str(item['match']))
+        model = model.replace(':file.!', str(item['file_name']))
+        model = model.replace(':file_size.!', str(item['file_size']))
         print(model)
     print('+----------------------------------------------+')
 
