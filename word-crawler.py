@@ -1,8 +1,8 @@
-from logging import debug
 from os import listdir as ls, path, stat
 from gooey import Gooey, GooeyParser
 from subprocess import Popen, PIPE
 from pdfminer import high_level as pdf
+import re
 import mimetypes
 
 # Global var
@@ -31,7 +31,7 @@ def main():
     #  de diretório
     from_dir.add_argument(
         'input_text',
-        metavar='Texto a ser procurado:',
+        metavar='Expressão regular a ser procurada:',
         widget='Textarea'
     )
 
@@ -49,9 +49,18 @@ def main():
         action='store_true'
     )
 
+    from_dir.add_argument(
+        '--scan_metadata',
+        dest='scan_metadata',
+        metavar='Escanear metadados:',
+        action='store_true'
+    )
+    
+
     args = parser.parse_args()
 
     try:
+        scan_metadata = args.scan_metadata
         query = args.input_text
         debug = args.debug
     except UnicodeDecodeError:
@@ -59,7 +68,7 @@ def main():
     else:
         if args.command == 'analyse_dir':
             list_sub_dir(args.dir, debug)
-            found_on = search(items, query, debug)  # i = index, m = match
+            found_on = search(items, query, debug, scan_metadata)  # i = index, m = match
             if found_on != None:
                 show_results(found_on)
             else:
@@ -98,13 +107,15 @@ def read_as_binary():  # a ser implementado
     return None
 
 
-def read_as_pdf(file_name:str, query:str, debug=False):
-    query = query.lower()
+def read_as_pdf(file_name:str, query:str, debug=False, scan_metadata=False):
     try:
         # file_byte = open(file_name, 'rb')  # abre o arquivo binário como tal
+        regex_query = re.compile(query, re.IGNORECASE)
         file_text = pdf.extract_text(file_name)  # lê o arquivo completo como PDF e decodifica para "ANSI"
-        file_text = file_text.lower()
-        metadata = enum_data(file_name, debug)
+        if scan_metadata:
+            metadata = enum_data(file_name, debug)
+        else:
+            metadata = ''    
     except UnicodeDecodeError:
         if debug:
             print('Unicode Decode Error em read_as_pdf')
@@ -118,11 +129,13 @@ def read_as_pdf(file_name:str, query:str, debug=False):
             print('Erro não tratado read_as_pdf: '+str(e))
         return None
     else:
+
         found_array = {}  # cria um dicionário vazio e limpa após cada loop
-        result = file_text.find(query) # abre arquivo como texto no terminal e filtra pela busca
-        if result >= 0:  # caso encontre algo executa príximos comandos
-            found_array['index'] = file_text.find(query)  # adiciona à lista index onde foi encontrado
-            found_array['match'] = query  # adiciona texto encontrado
+        result =  re.findall(regex_query, file_text)  # abre arquivo como texto e busca como match de expressão regular
+
+        if len(result) > 0:  # caso encontre algo executa próximos comandos
+            found_array['tot_found'] = len(result)  # adiciona à lista index onde foi encontrado
+            found_array['match'] = result  # adiciona texto encontrado
             found_array['file_name'] = file_name  # adiciona texto encontrado
             found_array['file_size'] = stat(file_name).st_size  # adiciona tamanho do arquivo
             found_array['metadata'] = metadata  # adiciona metadados do arquivo
@@ -132,13 +145,15 @@ def read_as_pdf(file_name:str, query:str, debug=False):
             return None
 
 
-def read_as_text(file_name:str, query:str, debug=False):
-    query = query.lower()
+def read_as_text(file_name:str, query:str, debug=False, scan_metadata=False):
     found_array = {}  # cria um dicionário vazio e limpa após cada loop
     try:
+        regex_query = re.compile(query, re.IGNORECASE)
         file_text = open(file_name, 'r').read() # lê arquivo completo e armazena texto em variável (caso seja binário, pula para o próximo)
-        file_text = file_text.lower()
-        metadata = enum_data(file_name, debug)
+        if scan_metadata:
+            metadata = enum_data(file_name, debug)
+        else:
+            metadata = ''
     except UnicodeDecodeError:
         if debug:
             print('Unicode Decode Error em read_as_text')
@@ -153,10 +168,10 @@ def read_as_text(file_name:str, query:str, debug=False):
             print('Erro não tratado read_as_text: '+str(e))
         return None
     else:
-        result = file_text.find(query)  # abre arquivo como texto no terminal e filtra pela busca
-        if result >= 0:  # caso encontre algo executa príximos comandos
-            found_array['index'] = file_text.find(query)  # adiciona à lista index onde foi encontrado
-            found_array['match'] = query  # adiciona texto encontrado
+        result =  re.findall(regex_query, file_text)  # abre arquivo como texto e busca como match de expressão regular
+        if len(result) > 0:  # caso encontre algo executa próximos comandos
+            found_array['tot_found'] = len(result)  # adiciona à lista index onde foi encontrado
+            found_array['match'] = result  # adiciona texto encontrado
             found_array['file_name'] = file_name  # adiciona texto encontrado
             found_array['file_size'] = stat(file_name).st_size  # adiciona tamanho do arquivo
             found_array['metadata'] = metadata  # adiciona metadados do arquivo
@@ -166,31 +181,32 @@ def read_as_text(file_name:str, query:str, debug=False):
             return None
 
 
-def search(file_list:list, query:str, debug=False):
+def search(file_list:list, query:str, debug=False, scan_metadata=False):
     num_file = len(file_list)
     found_on = []
     if debug:
         print('Procurando correspondências nos arquivos...')
     for i, file_name in enumerate(file_list):  # para cada arquivo encontrado
-        print(str(i+1) + ' / ' + str(num_file))
+        print(str(i+1) + ' / ' + str(num_file) + ' ('+ str(round(((i+1)/num_file), 2) * 100) + '%)')
         mimetype = mimetypes.MimeTypes().guess_type(file_name)[0]
         if mimetype == 'text/plain':
             if debug:
                 print('Encontrado tipo texto')
-            found_array = read_as_text(file_name, query, debug)
+            found_array = read_as_text(file_name, query, debug, scan_metadata)
             if found_array == None:
                 continue
             found_on.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
         elif mimetype == 'application/pdf':
-            print('Encontrado tipo pdf')
-            found_array = read_as_pdf(file_name, query, debug)
+            if debug:
+                print('Encontrado tipo PDF')
+            found_array = read_as_pdf(file_name, query, debug, scan_metadata)
             if found_array == None:
                 continue
             found_on.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
         else:
             if debug:
                 print('Encontrado tipo desconhecido')
-            found_array = read_as_text(file_name, query, debug)
+            found_array = read_as_text(file_name, query, debug, scan_metadata)
             if found_array == None:
                 continue
             found_on.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
@@ -206,8 +222,8 @@ def show_results(found_on:list): # exibição de resultados
     print('\n\n\n\n\n+------------------RESULTADOS------------------+')
     print('> Total de arquivos com correspondencia: '+str(num_found))
     for item in found_on:
-        model = '|\n|\tArquivo: :file.!\n|\tIndex encontrado: :index.!\n|\tTamanho do Arquivo (Bytes): :file_size.!\n|\tTexto encontrado: :match.!\n|\tDetalhes: :metadata.!\n------------------------------------------------'
-        model = model.replace(':index.!', str(item['index']))
+        model = '|\n|\tArquivo: :file.!\n|\tCorrespondências no aquivo: :tot_found.!\n|\tTamanho do Arquivo (Bytes): :file_size.!\n|\tTexto encontrado: :match.!\n|\tDetalhes: :metadata.!\n------------------------------------------------'
+        model = model.replace(':tot_found.!', str(item['tot_found']))
         model = model.replace(':match.!', str(item['match']))
         model = model.replace(':file.!', str(item['file_name']))
         model = model.replace(':file_size.!', str(item['file_size']))
@@ -248,7 +264,7 @@ def enum_data(archive:str, debug=False):
                 meta.append(key_value)
     else:
         num_items = index - 1  # "-1" pois o index se dá pelo número de linhas, e a primeira é pulada por ser referente ao exiftool
-    details = 'Número de metadados encontrados no arquivo: :num_itens.!\nMetadados: :metadata.!'
+    details = '\n\nNúmero de metadados encontrados no arquivo: :num_itens.!\nMetadados: :metadata.!'
     details = details.replace(':num_itens.!', str(num_items))
     details = details.replace(':metadata.!', list_metadata(meta, debug))
 
