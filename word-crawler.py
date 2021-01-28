@@ -5,6 +5,9 @@ from subprocess import Popen, PIPE
 from pdfminer import high_level as pdf
 import mimetypes
 
+# Global var
+items = []
+
 @Gooey(
     program_name = 'Word Crawler',
     program_description = 'Busca palavra chave em arquivos listando subdiretórios.',
@@ -49,22 +52,20 @@ def main():
     args = parser.parse_args()
 
     try:
-        text = args.input_text
+        query = args.input_text
         debug = args.debug
     except UnicodeDecodeError:
         print('Entrada de texto inválida')
     else:
         if args.command == 'analyse_dir':
-            items = list_sub_dir(args.dir, debug)
-            found_on = search(items, text, debug)  # i = index, m = match
+            list_sub_dir(args.dir, debug)
+            found_on = search(items, query, debug)  # i = index, m = match
             if found_on != None:
                 show_results(found_on)
             else:
                 print('Nada encontrado')
 
-
 def list_sub_dir(directory:str, debug=False):  # lista subdiretórios e retorna lista com arquivos encontrados
-    items = []
     if debug:
         print('Listando diretórios...')
     try:
@@ -73,11 +74,16 @@ def list_sub_dir(directory:str, debug=False):  # lista subdiretórios e retorna 
             if path.isdir(d):
                 if debug:
                     print('Pasta encontrada')
-                list_sub_dir(d)
+                list_sub_dir(d, debug)
             else:
                 if debug:
                     print('Arquivo Encontrado')
                 items.append(str(d))
+        else:
+            if len(items) == 0:
+                print('Não encontrados arquivos')
+                exit(3)
+                
     except PermissionError:
         if debug:
             print('Permissão Negada à Pasta')
@@ -86,12 +92,7 @@ def list_sub_dir(directory:str, debug=False):  # lista subdiretórios e retorna 
         if debug:
             print('Erro não tratado list_sub_dir: '+str(e))
         exit(2)
-    else:
-        if len(items) > 0:
-            return items
-        else:
-            print('Não encontrados arquivos')
-            exit(3)
+        
 
 def read_as_binary():  # a ser implementado
     return None
@@ -133,6 +134,7 @@ def read_as_pdf(file_name:str, query:str, debug=False):
 
 def read_as_text(file_name:str, query:str, debug=False):
     query = query.lower()
+    found_array = {}  # cria um dicionário vazio e limpa após cada loop
     try:
         file_text = open(file_name, 'r').read() # lê arquivo completo e armazena texto em variável (caso seja binário, pula para o próximo)
         file_text = file_text.lower()
@@ -140,7 +142,7 @@ def read_as_text(file_name:str, query:str, debug=False):
     except UnicodeDecodeError:
         if debug:
             print('Unicode Decode Error em read_as_text')
-        read_as_pdf(file_name, query, debug)  # abre o arquivo binário como PDF
+        # read_as_pdf(file_name, query, debug)  # abre o arquivo binário como PDF
         return None
     except PermissionError:
         if debug:
@@ -151,7 +153,6 @@ def read_as_text(file_name:str, query:str, debug=False):
             print('Erro não tratado read_as_text: '+str(e))
         return None
     else:
-        found_array = {}  # cria um dicionário vazio e limpa após cada loop
         result = file_text.find(query)  # abre arquivo como texto no terminal e filtra pela busca
         if result >= 0:  # caso encontre algo executa príximos comandos
             found_array['index'] = file_text.find(query)  # adiciona à lista index onde foi encontrado
@@ -187,15 +188,14 @@ def search(file_list:list, query:str, debug=False):
                 continue
             found_on.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
         else:
-            print('Encontrado tipo binário')
-            found_array = read_as_binary()
+            if debug:
+                print('Encontrado tipo desconhecido')
+            found_array = read_as_text(file_name, query, debug)
             if found_array == None:
                 continue
+            found_on.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
     else:
-        if len(found_on) > 0:
-            return found_on
-        else:
-            return None
+        return found_on
 
 def order_by_size(e):
     return e['file_size']
@@ -250,7 +250,7 @@ def enum_data(archive:str, debug=False):
         num_items = index - 1  # "-1" pois o index se dá pelo número de linhas, e a primeira é pulada por ser referente ao exiftool
     details = 'Número de metadados encontrados no arquivo: :num_itens.!\nMetadados: :metadata.!'
     details = details.replace(':num_itens.!', str(num_items))
-    details = details.replace(':metadata.!', list_metadata(meta))
+    details = details.replace(':metadata.!', list_metadata(meta, debug))
 
     return details
 
