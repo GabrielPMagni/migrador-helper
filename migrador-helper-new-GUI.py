@@ -213,7 +213,7 @@ class ajustaOrto8DAT:
         self.__novo_arq_txt = regex.sub('[ç]', 'c', self.__novo_arq_txt)
         self.__novo_arq_txt = regex.sub('[Ç]', 'C', self.__novo_arq_txt)
         if not self.arquivo.name.lower().endswith('.csv'):
-            self.__novo_arq_txt = regex.sub('([^.\-(<br><br>)(R$)+\d/\w\s])|([Þÿ½ÄåÖëß´`Ü])|(Óÿ)', '', self.__novo_arq_txt)
+            self.__novo_arq_txt = regex.sub('([^.\-(<br><br>)(R$)+\d/\w\s])|([Þÿ½ÄåÖëß´`Ü±\"¤])|(Óÿ)', '', self.__novo_arq_txt)
         self.__novoarquivo_temp2.write(self.__novo_arq_txt)
         self.arquivo.close()
         self.__novoarquivo_temp2.close()

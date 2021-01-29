@@ -1,9 +1,9 @@
 from random import randint
 model = """+-----------------------------------------+
 | Dia: :day
-| Horários: :h1 | :h2 | :h3 | :h4"""
+| Horarios: :h1 | :h2 | :h3 | :h4"""
 
-for i in range(31):
+for i in range(365):
     h1 = 8
     h2 = 12
     h3 = 13
@@ -25,7 +25,6 @@ for i in range(31):
             t3 = str(h3)+':'+str(abs(m3))
             t4 = str(h4)+':'+str(m4)
         elif surprise == 1:
-            h3 -= 1  # 12
             h4 -= 1  # 17
             m1 = '00'
             m2 = '00'
@@ -40,10 +39,11 @@ for i in range(31):
                 t4 = str(h4)+':0'+str(abs(m4))
         elif surprise == 2:
             h1 -= 1  # 7
+            h4 -= 1  # 17
             m1 = 60 + minute
             m2 = '00'
             m3 = 30
-            m4 = 0 + abs(minute)
+            m4 = 60 - abs(minute)
             t1 = '0'+str(h1)+':'+str(abs(m1))
             t2 = str(h2)+':'+str(m2)
             t3 = str(h3)+':'+str(abs(m3))
@@ -81,11 +81,10 @@ for i in range(31):
             else:
                 t4 = str(h4)+':0'+str(abs(m4))
         elif surprise == 2:
-            h4 -= 1  # 17h
             m1 = 0 + minute
             m2 = '00'
             m3 = 30
-            m4 = 60 - abs(minute)
+            m4 = abs(minute)
 
             if len(str(m1)) >= 2:
                 t1 = '0'+str(h1)+':'+str(abs(m1))

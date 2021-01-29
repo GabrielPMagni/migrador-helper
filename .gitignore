@@ -1,5 +1,6 @@
 *
-!migrador-helper*.py
+!migrador-*.py
 !retirar_quebras_linha.py
 !.gitignore
 !fillRHHourTable.py
+!word-crawler.py
