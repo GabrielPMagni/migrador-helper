@@ -3,7 +3,9 @@ from gooey import Gooey, GooeyParser
 from subprocess import Popen, PIPE
 from pdfminer import high_level as pdf
 import re
+import magic
 import mimetypes
+from ast import literal_eval as to_dict
 
 # Global var
 items = []
@@ -36,6 +38,49 @@ def main():
     )
 
     from_dir.add_argument(
+        '--find_email',
+        dest='find_email',
+        metavar='Procurar emails:',
+        action='store_true'
+    )
+
+    from_dir.add_argument(
+        '--find_phone',
+        dest='find_phone',
+        metavar='Procurar Telefones/Celulares:',
+        action='store_true'
+    )
+
+    from_dir.add_argument(
+        '--find_cpf',
+        dest='find_cpf',
+        metavar='Procurar CPF:',
+        action='store_true'
+    )
+
+    from_dir.add_argument(
+        '--find_cnpj',
+        dest='find_cnpj',
+        metavar='Procurar CNPJ:',
+        action='store_true'
+    )
+
+    from_dir.add_argument(
+        '--find_date',
+        dest='find_date',
+        metavar='Procurar Datas:',
+        action='store_true'
+    )
+
+    from_dir.add_argument(
+        '--find_cep',
+        dest='find_cep',
+        metavar='Procurar CEP:',
+        action='store_true'
+    )
+
+
+    from_dir.add_argument(
         'dir',
         metavar='Pasta a ser verificada:',
         widget="DirChooser",
@@ -56,21 +101,42 @@ def main():
         action='store_true'
     )
     
+    from_dir.add_argument(
+        '--order_by',
+        dest='order_by',
+        metavar='Ordenar por:',
+        choices=['Tamanho do Arquivo', 'Quantidade de Correspondências'],
+        default='Tamanho do Arquivo'
+    )
+    
 
     args = parser.parse_args()
 
     try:
+        search_for = {'email': args.find_email, 'phone': args.find_phone, 'cpf': args.find_cpf, 'cnpj': args.find_cnpj, 'date': args.find_date, 'cep': args.find_cep}
+        scan_personal = any([args.find_email, args.find_phone, args.find_cpf, args.find_cnpj, args.find_date, args.find_cep])
         scan_metadata = args.scan_metadata
         query = args.input_text
         debug = args.debug
+        if args.order_by == 'Tamanho do Arquivo':
+            order_by = 1
+        elif args.order_by == 'Quantidade de Correspondências':
+            order_by = 2
+        else:
+            order_by = 1
     except UnicodeDecodeError:
         print('Entrada de texto inválida')
     else:
         if args.command == 'analyse_dir':
             list_sub_dir(args.dir, debug)
-            found_on = search(items, query, debug, scan_metadata)  # i = index, m = match
+            found_on = search(items, query, debug, scan_metadata) 
+            if scan_personal:
+                personal_data = search_personal(items, search_for, debug)
+                print(personal_data)
+                if len(personal_data) > 0: 
+                    show_personal_data(personal_data)
             if found_on != None:
-                show_results(found_on)
+                show_results(found_on, order_by)
             else:
                 print('Nada encontrado')
 
@@ -103,13 +169,13 @@ def list_sub_dir(directory:str, debug=False):  # lista subdiretórios e retorna 
         exit(2)
         
 
-def read_as_binary():  # a ser implementado
-    return None
+def read_as_binary(file_name:str, query:str, debug=False, scan_metadata=False):  # a ser implementado
+    with magic.Magic() as m:
+        print(m.id_filename(file_name))
 
 
 def read_as_pdf(file_name:str, query:str, debug=False, scan_metadata=False):
     try:
-        # file_byte = open(file_name, 'rb')  # abre o arquivo binário como tal
         regex_query = re.compile(query, re.IGNORECASE)
         file_text = pdf.extract_text(file_name)  # lê o arquivo completo como PDF e decodifica para "ANSI"
         if scan_metadata:
@@ -132,7 +198,7 @@ def read_as_pdf(file_name:str, query:str, debug=False, scan_metadata=False):
 
         found_array = {}  # cria um dicionário vazio e limpa após cada loop
         result =  re.findall(regex_query, file_text)  # abre arquivo como texto e busca como match de expressão regular
-
+        # result_final = remove_values_from_list(result)
         if len(result) > 0:  # caso encontre algo executa próximos comandos
             found_array['tot_found'] = len(result)  # adiciona à lista index onde foi encontrado
             found_array['match'] = result  # adiciona texto encontrado
@@ -143,6 +209,148 @@ def read_as_pdf(file_name:str, query:str, debug=False, scan_metadata=False):
             return found_array
         else:
             return None
+
+def remove_values_from_list(the_list:list):
+    while ('' in the_list):
+        the_list.remove('')
+    else:
+        return the_list
+
+
+def search_personal(file_list, search_for, debug=False):
+    num_file = len(file_list)
+    email_found = []
+    phone_found = []
+    cpf_found = []
+    cnpj_found = []
+    date_found = []
+    cep_found = []
+    dict_model = {}
+    if debug:
+        print('Procurando correspondências nos arquivos...')
+    for i, file_name in enumerate(file_list):  # para cada arquivo encontrado
+        print('Dados Pessoais: ' + str(i+1) + ' / ' + str(num_file) + ' ('+ str(round(((i+1)/num_file), 2) * 100) + '%)')
+        mimetype = mimetypes.MimeTypes().guess_type(file_name)[0]
+        if mimetype == 'text/plain':
+            if debug:
+                print('Encontrado tipo texto em search_personal')
+            if search_for.get('email'):
+                if debug:
+                    print('Enumerando emails...')
+                query = '(?P<email>[a-zA-Z0-9.!#$%&\'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*)'
+                found_array = read_as_text(file_name, query, debug)
+                if found_array == None:
+                    continue
+                email_found.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
+            if search_for.get('phone'):
+                if debug:
+                    print('Enumerando telefone / celular...')
+                query = '(?P<phone>\(?[1-9]{2}\)? ?(?:[2-8]|9[1-9])[0-9]{3}\-?[0-9]{4})'
+                found_array = read_as_text(file_name, query, debug)
+                if found_array == None:
+                    continue
+                phone_found.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
+            if search_for.get('cpf'):
+                if debug:
+                    print('Enumerando CPF...')
+                query = '(?P<cpf>\d{3}\.\d{3}\.\d{3}\-\d{2})'
+                found_array = read_as_text(file_name, query, debug)
+                if found_array == None:
+                    continue
+                cpf_found.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
+            if search_for.get('cnpj'):
+                if debug:
+                    print('Enumerando CNPJ...')
+                query = '(?P<cnpj>\d{2}\.\d{3}\.\d{3}\/\d{4}\-\d{2})'
+                found_array = read_as_text(file_name, query, debug)
+                if found_array == None:
+                    continue
+                cnpj_found.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
+            if search_for.get('date'):
+                if debug:
+                    print('Enumerando Data...')
+                query = '(?P<date>(([1-3])(\d)).?(1([1-2])).?(\d){4}|(1([1-2])).?(([1-3])(\d)).?(\d){4}|(\d){4}.?(1([1-2])).?(([1-3])(\d)))'
+                found_array = read_as_text(file_name, query, debug)
+                if found_array == None:
+                    continue
+                date_found.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
+            if search_for.get('cep'):
+                if debug:
+                    print('Enumerando CEP...')
+                query = '(?P<cep>(\d){5}.?(\d){3})'
+                found_array = read_as_text(file_name, query, debug)
+                if found_array == None:
+                    continue
+                cep_found.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
+        elif mimetype == 'application/pdf':
+            if debug:
+                print('Encontrado tipo PDF em search_personal')
+            if search_for.get('email'):
+                if debug:
+                    print('Enumerando emails...')
+                query = '(?P<email>[a-zA-Z0-9.!#$%&\'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*)'
+                found_array = read_as_pdf(file_name, query, debug)
+                if found_array == None:
+                    continue
+                email_found.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
+            if search_for.get('phone'):
+                if debug:
+                    print('Enumerando telefone / celular...')
+                query = '(?P<phone>\(?[1-9]{2}\)? ?(?:[2-8]|9[1-9])[0-9]{3}\-?[0-9]{4})'
+                found_array = read_as_pdf(file_name, query, debug)
+                if found_array == None:
+                    continue
+                phone_found.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
+            if search_for.get('cpf'):
+                if debug:
+                    print('Enumerando CPF...')
+                query = '(?P<cpf>\d{3}\.\d{3}\.\d{3}\-\d{2})'
+                found_array = read_as_pdf(file_name, query, debug)
+                if found_array == None:
+                    continue
+                cpf_found.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
+            if search_for.get('cnpj'):
+                if debug:
+                    print('Enumerando CNPJ...')
+                query = '(?P<cnpj>\d{2}\.\d{3}\.\d{3}\/\d{4}\-\d{2})'
+                found_array = read_as_pdf(file_name, query, debug)
+                if found_array == None:
+                    continue
+                cnpj_found.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
+            if search_for.get('date'):
+                if debug:
+                    print('Enumerando Data...')
+                query = '(?P<date>(([1-3])(\d)).?(1([1-2])).?(\d){4}|(1([1-2])).?(([1-3])(\d)).?(\d){4}|(\d){4}.?(1([1-2])).?(([1-3])(\d)))'
+                found_array = read_as_pdf(file_name, query, debug)
+                if found_array == None:
+                    continue
+                date_found.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
+            if search_for.get('cep'):
+                if debug:
+                    print('Enumerando CEP...')
+                query = '(?P<cep>(\d){5}.?(\d){3})'
+                found_array = read_as_pdf(file_name, query, debug)
+                if found_array == None:
+                    continue
+                cep_found.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
+
+
+    else:
+        if len(email_found) > 0:
+            dict_model['emails'] = str(email_found)
+        if len(phone_found) > 0:
+            dict_model['phones'] = str(phone_found)
+        if len(cpf_found) > 0:
+            dict_model['cpfs'] = str(cpf_found)
+        if len(cnpj_found) > 0:
+            dict_model['cnpjs'] = str(cnpj_found)
+        if len(date_found) > 0:
+            dict_model['dates'] = str(date_found)
+        if len(cep_found) > 0:
+            dict_model['ceps'] = str(cep_found)
+
+        return dict_model
+
 
 
 def read_as_text(file_name:str, query:str, debug=False, scan_metadata=False):
@@ -169,6 +377,7 @@ def read_as_text(file_name:str, query:str, debug=False, scan_metadata=False):
         return None
     else:
         result =  re.findall(regex_query, file_text)  # abre arquivo como texto e busca como match de expressão regular
+        # result_final = remove_values_from_list(result)
         if len(result) > 0:  # caso encontre algo executa próximos comandos
             found_array['tot_found'] = len(result)  # adiciona à lista index onde foi encontrado
             found_array['match'] = result  # adiciona texto encontrado
@@ -216,8 +425,15 @@ def search(file_list:list, query:str, debug=False, scan_metadata=False):
 def order_by_size(e):
     return e['file_size']
 
-def show_results(found_on:list): # exibição de resultados
-    found_on.sort(reverse=True, key=order_by_size)
+def order_by_matches(e):
+    return e['tot_found']
+
+
+def show_results(found_on:list, sort_mode=1): # exibição de resultados
+    if sort_mode == 1:
+        found_on.sort(reverse=True, key=order_by_size)
+    elif sort_mode == 2:
+        found_on.sort(reverse=True, key=order_by_matches)
     num_found = len(found_on)
     print('\n\n\n\n\n+------------------RESULTADOS------------------+')
     print('> Total de arquivos com correspondencia: '+str(num_found))
@@ -227,9 +443,62 @@ def show_results(found_on:list): # exibição de resultados
         model = model.replace(':match.!', str(item['match']))
         model = model.replace(':file.!', str(item['file_name']))
         model = model.replace(':file_size.!', str(item['file_size']))
-        model = model.replace(':metadata.!', (item['metadata']))
+        model = model.replace(':metadata.!', str(item['metadata']))
         print(model)
     print('+----------------------------------------------+')
+
+
+def show_personal_data(found_on:dict):
+    print('\n\n\n\n\n+-----------------RESULTADOS DADOS PESSOAIS-----------------+')
+    if 'emails' in found_on:
+        model = '|\n|\tArquivo: :file.!\n|\n|\tTamanho do Arquivo (Bytes): :file_size.!\n|\n|\tTexto encontrado: :match.!\n------------------------------------------------'
+        print('> Total de correspondências (EMAIL): '+str(to_dict(found_on.get('emails'))[0].get('tot_found')))
+        model = model.replace(':match.!', str(to_dict(found_on.get('emails'))[0].get('match')))
+        model = model.replace(':file.!', str(to_dict(found_on.get('emails'))[0].get('file_name')))
+        model = model.replace(':file_size.!', str(to_dict(found_on.get('emails'))[0].get('file_size')))
+        print(model)
+    if 'phones' in found_on:
+        num_found = len(found_on['phones'])
+        model = '|\n|\tArquivo: :file.!\n|\n|\tTamanho do Arquivo (Bytes): :file_size.!\n|\n|\tTexto encontrado: :match.!\n------------------------------------------------'
+        print('> Total de correspondências (TELEFONE / CELULAR): '+str(to_dict(found_on.get('phones'))[0].get('tot_found')))
+        model = model.replace(':match.!', str(to_dict(found_on.get('phones'))[0].get('match')))
+        model = model.replace(':file.!', str(to_dict(found_on.get('phones'))[0].get('file_name')))
+        model = model.replace(':file_size.!', str(to_dict(found_on.get('phones'))[0].get('file_size')))
+        print(model)
+    if 'cpfs' in found_on:
+        num_found = len(found_on['cpfs'])
+        model = '|\n|\tArquivo: :file.!\n|\n|\tTamanho do Arquivo (Bytes): :file_size.!\n|\n|\tTexto encontrado: :match.!\n------------------------------------------------'
+        print('> Total de correspondências (CPF): '+str(to_dict(found_on.get('cpfs'))[0].get('tot_found')))
+        model = model.replace(':match.!', str(to_dict(found_on.get('cpfs'))[0].get('match')))
+        model = model.replace(':file.!', str(to_dict(found_on.get('cpfs'))[0].get('file_name')))
+        model = model.replace(':file_size.!', str(to_dict(found_on.get('cpfs'))[0].get('file_size')))
+        print(model)
+    if 'cnpjs' in found_on:
+        num_found = len(found_on['cnpjs'])
+        model = '|\n|\tArquivo: :file.!\n|\n|\tTamanho do Arquivo (Bytes): :file_size.!\n|\n|\tTexto encontrado: :match.!\n------------------------------------------------'
+        print('> Total de correspondências (CNPJ): '+str(to_dict(found_on.get('cnpjs'))[0].get('tot_found')))
+        model = model.replace(':match.!', str(to_dict(found_on.get('cnpjs'))[0].get('match')))
+        model = model.replace(':file.!', str(to_dict(found_on.get('cnpjs'))[0].get('file_name')))
+        model = model.replace(':file_size.!', str(to_dict(found_on.get('cnpjs'))[0].get('file_size')))
+        print(model)
+    if 'dates' in found_on:
+        num_found = len(found_on['dates'])
+        model = '|\n|\tArquivo: :file.!\n|\n|\tTamanho do Arquivo (Bytes): :file_size.!\n|\n|\tTexto encontrado: :match.!\n------------------------------------------------'
+        print('> Total de correspondências (DATA): '+str(to_dict(found_on.get('dates'))[0].get('tot_found')))
+        model = model.replace(':match.!', str(to_dict(found_on.get('dates'))[0].get('match')))
+        model = model.replace(':file.!', str(to_dict(found_on.get('dates'))[0].get('file_name')))
+        model = model.replace(':file_size.!', str(to_dict(found_on.get('dates'))[0].get('file_size')))
+        print(model)
+    if 'ceps' in found_on:
+        num_found = len(found_on['ceps'])
+        model = '|\n|\tArquivo: :file.!\n|\tTamanho do Arquivo (Bytes): :file_size.!\n|\n|\tTexto encontrado: :match.!\n------------------------------------------------'
+        print('> Total de correspondências (DATA): '+str(to_dict(found_on.get('ceps'))[0].get('tot_found')))
+        model = model.replace(':match.!', str(to_dict(found_on.get('ceps'))[0].get('match')))
+        model = model.replace(':file.!', str(to_dict(found_on.get('ceps'))[0].get('file_name')))
+        model = model.replace(':file_size.!', str(to_dict(found_on.get('ceps'))[0].get('file_size')))
+        print(model)
+    print('+----------------------------------------------+')
+
 
 
 def list_metadata(meta:list, debug=False):
