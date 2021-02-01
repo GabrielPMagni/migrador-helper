@@ -132,7 +132,6 @@ def main():
             found_on = search(items, query, debug, scan_metadata) 
             if scan_personal:
                 personal_data = search_personal(items, search_for, debug)
-                print(personal_data)
                 if len(personal_data) > 0: 
                     show_personal_data(personal_data)
             if found_on != None:
@@ -169,9 +168,44 @@ def list_sub_dir(directory:str, debug=False):  # lista subdiretórios e retorna 
         exit(2)
         
 
-def read_as_binary(file_name:str, query:str, debug=False, scan_metadata=False):  # a ser implementado
-    with magic.Magic() as m:
-        print(m.id_filename(file_name))
+def read_as_binary(file_name, query:str, debug=False, scan_metadata=False):  # a ser implementado
+    # try:
+    #     regex_query = re.compile(query, re.IGNORECASE)
+    #     if scan_metadata:
+    #         metadata = enum_data(file_name, debug)
+    #     else:
+    #         metadata = ''    
+    # except UnicodeDecodeError:
+    #     if debug:
+    #         print('Unicode Decode Error em read_as_pdf')
+    #     return None
+    # except PermissionError:
+    #     if debug:
+    #         print('Permissão Negada ao Arquivo')
+    #     return None
+    # except Exception as e:
+    #     if debug:
+    #         print('Erro não tratado read_as_pdf: '+str(e))
+    #     return None
+    # else:
+
+    #     found_array = {}  # cria um dicionário vazio e limpa após cada loop
+    #     result =  re.findall(regex_query, file_text)  # abre arquivo como texto e busca como match de expressão regular
+    #     if len(result) > 0:  # caso encontre algo executa próximos comandos
+    #         found_array['tot_found'] = len(result)  # adiciona à lista index onde foi encontrado
+    #         found_array['match'] = result  # adiciona texto encontrado
+    #         found_array['file_name'] = file_name  # adiciona texto encontrado
+    #         found_array['file_size'] = stat(file_name).st_size  # adiciona tamanho do arquivo
+    #         found_array['metadata'] = metadata  # adiciona metadados do arquivo
+    #     if len(found_array) > 0:
+    #         return found_array
+    #     else:
+    return None
+
+
+    # with magic.Magic() as m:
+    #     print(m.id_filename(file_name))
+    # magic.Magic().close()
 
 
 def read_as_pdf(file_name:str, query:str, debug=False, scan_metadata=False):
@@ -198,7 +232,6 @@ def read_as_pdf(file_name:str, query:str, debug=False, scan_metadata=False):
 
         found_array = {}  # cria um dicionário vazio e limpa após cada loop
         result =  re.findall(regex_query, file_text)  # abre arquivo como texto e busca como match de expressão regular
-        # result_final = remove_values_from_list(result)
         if len(result) > 0:  # caso encontre algo executa próximos comandos
             found_array['tot_found'] = len(result)  # adiciona à lista index onde foi encontrado
             found_array['match'] = result  # adiciona texto encontrado
@@ -231,7 +264,9 @@ def search_personal(file_list, search_for, debug=False):
     for i, file_name in enumerate(file_list):  # para cada arquivo encontrado
         print('Dados Pessoais: ' + str(i+1) + ' / ' + str(num_file) + ' ('+ str(round(((i+1)/num_file), 2) * 100) + '%)')
         mimetype = mimetypes.MimeTypes().guess_type(file_name)[0]
-        if mimetype == 'text/plain':
+        if mimetype == None:
+            mimetype = 'text'
+        if 'text' in mimetype or 'csv' in mimetype:
             if debug:
                 print('Encontrado tipo texto em search_personal')
             if search_for.get('email'):
@@ -282,7 +317,7 @@ def search_personal(file_list, search_for, debug=False):
                 if found_array == None:
                     continue
                 cep_found.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
-        elif mimetype == 'application/pdf':
+        elif 'pdf' in mimetype:
             if debug:
                 print('Encontrado tipo PDF em search_personal')
             if search_for.get('email'):
@@ -333,8 +368,6 @@ def search_personal(file_list, search_for, debug=False):
                 if found_array == None:
                     continue
                 cep_found.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
-
-
     else:
         if len(email_found) > 0:
             dict_model['emails'] = str(email_found)
@@ -398,14 +431,16 @@ def search(file_list:list, query:str, debug=False, scan_metadata=False):
     for i, file_name in enumerate(file_list):  # para cada arquivo encontrado
         print(str(i+1) + ' / ' + str(num_file) + ' ('+ str(round(((i+1)/num_file), 2) * 100) + '%)')
         mimetype = mimetypes.MimeTypes().guess_type(file_name)[0]
-        if mimetype == 'text/plain':
+        if mimetype == None:
+            mimetype = 'text'
+        if 'text' in mimetype or 'csv' in mimetype:
             if debug:
                 print('Encontrado tipo texto')
             found_array = read_as_text(file_name, query, debug, scan_metadata)
             if found_array == None:
                 continue
             found_on.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
-        elif mimetype == 'application/pdf':
+        elif 'pdf' in mimetype:
             if debug:
                 print('Encontrado tipo PDF')
             found_array = read_as_pdf(file_name, query, debug, scan_metadata)
@@ -458,7 +493,6 @@ def show_personal_data(found_on:dict):
         model = model.replace(':file_size.!', str(to_dict(found_on.get('emails'))[0].get('file_size')))
         print(model)
     if 'phones' in found_on:
-        num_found = len(found_on['phones'])
         model = '|\n|\tArquivo: :file.!\n|\n|\tTamanho do Arquivo (Bytes): :file_size.!\n|\n|\tTexto encontrado: :match.!\n------------------------------------------------'
         print('> Total de correspondências (TELEFONE / CELULAR): '+str(to_dict(found_on.get('phones'))[0].get('tot_found')))
         model = model.replace(':match.!', str(to_dict(found_on.get('phones'))[0].get('match')))
@@ -466,7 +500,6 @@ def show_personal_data(found_on:dict):
         model = model.replace(':file_size.!', str(to_dict(found_on.get('phones'))[0].get('file_size')))
         print(model)
     if 'cpfs' in found_on:
-        num_found = len(found_on['cpfs'])
         model = '|\n|\tArquivo: :file.!\n|\n|\tTamanho do Arquivo (Bytes): :file_size.!\n|\n|\tTexto encontrado: :match.!\n------------------------------------------------'
         print('> Total de correspondências (CPF): '+str(to_dict(found_on.get('cpfs'))[0].get('tot_found')))
         model = model.replace(':match.!', str(to_dict(found_on.get('cpfs'))[0].get('match')))
@@ -474,7 +507,6 @@ def show_personal_data(found_on:dict):
         model = model.replace(':file_size.!', str(to_dict(found_on.get('cpfs'))[0].get('file_size')))
         print(model)
     if 'cnpjs' in found_on:
-        num_found = len(found_on['cnpjs'])
         model = '|\n|\tArquivo: :file.!\n|\n|\tTamanho do Arquivo (Bytes): :file_size.!\n|\n|\tTexto encontrado: :match.!\n------------------------------------------------'
         print('> Total de correspondências (CNPJ): '+str(to_dict(found_on.get('cnpjs'))[0].get('tot_found')))
         model = model.replace(':match.!', str(to_dict(found_on.get('cnpjs'))[0].get('match')))
@@ -482,7 +514,6 @@ def show_personal_data(found_on:dict):
         model = model.replace(':file_size.!', str(to_dict(found_on.get('cnpjs'))[0].get('file_size')))
         print(model)
     if 'dates' in found_on:
-        num_found = len(found_on['dates'])
         model = '|\n|\tArquivo: :file.!\n|\n|\tTamanho do Arquivo (Bytes): :file_size.!\n|\n|\tTexto encontrado: :match.!\n------------------------------------------------'
         print('> Total de correspondências (DATA): '+str(to_dict(found_on.get('dates'))[0].get('tot_found')))
         model = model.replace(':match.!', str(to_dict(found_on.get('dates'))[0].get('match')))
@@ -490,7 +521,6 @@ def show_personal_data(found_on:dict):
         model = model.replace(':file_size.!', str(to_dict(found_on.get('dates'))[0].get('file_size')))
         print(model)
     if 'ceps' in found_on:
-        num_found = len(found_on['ceps'])
         model = '|\n|\tArquivo: :file.!\n|\tTamanho do Arquivo (Bytes): :file_size.!\n|\n|\tTexto encontrado: :match.!\n------------------------------------------------'
         print('> Total de correspondências (DATA): '+str(to_dict(found_on.get('ceps'))[0].get('tot_found')))
         model = model.replace(':match.!', str(to_dict(found_on.get('ceps'))[0].get('match')))
