@@ -17,7 +17,7 @@ items = []
     show_success_modal=False,
     show_failure_modal=True,
     hide_progress_msg=True,
-    default_size=(610, 580),
+    default_size=(610, 770),
     navigation='TABBED',
     menu=[{'name': 'Sobre', 'items': [{'type': 'AboutDialog', 'name': 'Sobre o Word Crawler', 'menuTitle': 'Sobre', 'description': 'Busca palavra chave em arquivos listando subdiretórios e metadados', 'version': '1.0',  'developer': 'Gabriel Peres Magni','website': 'https://github.com/GabrielPMagni'}]}]
 )
@@ -129,7 +129,10 @@ def main():
     else:
         if args.command == 'analyse_dir':
             list_sub_dir(args.dir, debug)
-            found_on = search(items, query, debug, scan_metadata) 
+            found_on = search(items, query, debug)
+            file_types = search_file_types(items, debug, scan_metadata)
+            if len(file_types) > 0:
+                show_file_types(file_types)
             if scan_personal:
                 personal_data = search_personal(items, search_for, debug)
                 if len(personal_data) > 0: 
@@ -138,6 +141,7 @@ def main():
                 show_results(found_on, order_by)
             else:
                 print('Nada encontrado')
+
 
 def list_sub_dir(directory:str, debug=False):  # lista subdiretórios e retorna lista com arquivos encontrados
     if debug:
@@ -168,54 +172,46 @@ def list_sub_dir(directory:str, debug=False):  # lista subdiretórios e retorna 
         exit(2)
         
 
-def read_as_binary(file_name, query:str, debug=False, scan_metadata=False):  # a ser implementado
-    # try:
-    #     regex_query = re.compile(query, re.IGNORECASE)
-    #     if scan_metadata:
-    #         metadata = enum_data(file_name, debug)
-    #     else:
-    #         metadata = ''    
-    # except UnicodeDecodeError:
-    #     if debug:
-    #         print('Unicode Decode Error em read_as_pdf')
-    #     return None
-    # except PermissionError:
-    #     if debug:
-    #         print('Permissão Negada ao Arquivo')
-    #     return None
-    # except Exception as e:
-    #     if debug:
-    #         print('Erro não tratado read_as_pdf: '+str(e))
-    #     return None
-    # else:
-
-    #     found_array = {}  # cria um dicionário vazio e limpa após cada loop
-    #     result =  re.findall(regex_query, file_text)  # abre arquivo como texto e busca como match de expressão regular
-    #     if len(result) > 0:  # caso encontre algo executa próximos comandos
-    #         found_array['tot_found'] = len(result)  # adiciona à lista index onde foi encontrado
-    #         found_array['match'] = result  # adiciona texto encontrado
-    #         found_array['file_name'] = file_name  # adiciona texto encontrado
-    #         found_array['file_size'] = stat(file_name).st_size  # adiciona tamanho do arquivo
-    #         found_array['metadata'] = metadata  # adiciona metadados do arquivo
-    #     if len(found_array) > 0:
-    #         return found_array
-    #     else:
-    return None
+def read_as_binary(file_name, debug=False, scan_metadata=False): 
+    try:
+        file = open(file_name, 'rb').read()
+        file_text = magic.Magic().from_buffer(file)
+        if scan_metadata:
+            metadata = enum_data(file_name, debug)
+        else:
+            metadata = ''    
+    except UnicodeDecodeError:
+        if debug:
+            print('Unicode Decode Error em read_as_binary')
+        return None
+    except PermissionError:
+        if debug:
+            print('Permissão Negada ao Arquivo read_as_binary')
+        return None
+    except Exception as e:
+        if debug:
+            print('Erro não tratado read_as_binary: '+str(e))
+        return None
+    else:
+        found_array = {}  # cria um dicionário vazio e limpa após cada loop
+        found_array['tot_found'] = 'Tipo do Aquivo'  # adiciona à lista index onde foi encontrado
+        found_array['match'] = file_text  # adiciona texto encontrado (tipo do arquivo de acordo com libmagic)
+        found_array['file_name'] = file_name  # adiciona texto encontrado
+        found_array['file_size'] = stat(file_name).st_size  # adiciona tamanho do arquivo
+        found_array['metadata'] = metadata  # adiciona metadados do arquivo
+        if len(found_array) > 0:
+            return found_array
+        else:
+            return None
 
 
-    # with magic.Magic() as m:
-    #     print(m.id_filename(file_name))
-    # magic.Magic().close()
 
 
 def read_as_pdf(file_name:str, query:str, debug=False, scan_metadata=False):
     try:
         regex_query = re.compile(query, re.IGNORECASE)
         file_text = pdf.extract_text(file_name)  # lê o arquivo completo como PDF e decodifica para "ANSI"
-        if scan_metadata:
-            metadata = enum_data(file_name, debug)
-        else:
-            metadata = ''    
+        metadata = ''    
     except UnicodeDecodeError:
         if debug:
             print('Unicode Decode Error em read_as_pdf')
@@ -391,10 +387,7 @@ def read_as_text(file_name:str, query:str, debug=False, scan_metadata=False):
     try:
         regex_query = re.compile(query, re.IGNORECASE)
         file_text = open(file_name, 'r').read() # lê arquivo completo e armazena texto em variável (caso seja binário, pula para o próximo)
-        if scan_metadata:
-            metadata = enum_data(file_name, debug)
-        else:
-            metadata = ''
+        metadata = ''
     except UnicodeDecodeError:
         if debug:
             print('Unicode Decode Error em read_as_text')
@@ -410,7 +403,6 @@ def read_as_text(file_name:str, query:str, debug=False, scan_metadata=False):
         return None
     else:
         result =  re.findall(regex_query, file_text)  # abre arquivo como texto e busca como match de expressão regular
-        # result_final = remove_values_from_list(result)
         if len(result) > 0:  # caso encontre algo executa próximos comandos
             found_array['tot_found'] = len(result)  # adiciona à lista index onde foi encontrado
             found_array['match'] = result  # adiciona texto encontrado
@@ -421,9 +413,19 @@ def read_as_text(file_name:str, query:str, debug=False, scan_metadata=False):
             return found_array
         else:
             return None
+def search_file_types(file_list:list, debug=False, scan_metadata=False):
+    num_file = len(file_list)
+    found_on_types = []
+    for i, file_name in enumerate(file_list):  # para cada arquivo encontrado
+        print('Tipos de Dados: ' + str(i+1) + ' / ' + str(num_file) + ' ('+ str(round(((i+1)/num_file), 2) * 100) + '%)')
+        found_types = read_as_binary(file_name, debug, scan_metadata)
+        if found_types == None:
+            continue
+        found_on_types.append(found_types)
+    else:
+        return found_on_types
 
-
-def search(file_list:list, query:str, debug=False, scan_metadata=False):
+def search(file_list:list, query:str, debug=False):
     num_file = len(file_list)
     found_on = []
     if debug:
@@ -436,21 +438,21 @@ def search(file_list:list, query:str, debug=False, scan_metadata=False):
         if 'text' in mimetype or 'csv' in mimetype:
             if debug:
                 print('Encontrado tipo texto')
-            found_array = read_as_text(file_name, query, debug, scan_metadata)
+            found_array = read_as_text(file_name, query, debug)
             if found_array == None:
                 continue
             found_on.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
         elif 'pdf' in mimetype:
             if debug:
                 print('Encontrado tipo PDF')
-            found_array = read_as_pdf(file_name, query, debug, scan_metadata)
+            found_array = read_as_pdf(file_name, query, debug)
             if found_array == None:
                 continue
             found_on.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
         else:
             if debug:
                 print('Encontrado tipo desconhecido')
-            found_array = read_as_text(file_name, query, debug, scan_metadata)
+            found_array = read_as_text(file_name, query, debug)
             if found_array == None:
                 continue
             found_on.append(found_array)  # adiciona lista à lista maior contendo de todos os arquivos
@@ -527,7 +529,22 @@ def show_personal_data(found_on:dict):
         model = model.replace(':file.!', str(to_dict(found_on.get('ceps'))[0].get('file_name')))
         model = model.replace(':file_size.!', str(to_dict(found_on.get('ceps'))[0].get('file_size')))
         print(model)
-    print('+----------------------------------------------+')
+    print('+'+('-'*59)+'+')
+
+
+def show_file_types(found_on:list):
+    num_found = len(found_on)
+    print('\n\n\n\n\n+------------------RESULTADOS TIPOS DE ARQUIVOS------------------+')
+    print('> Total de arquivos com correspondencia: '+str(num_found))
+    for item in found_on:
+        model = '|\n|\tArquivo: :file.!\n|\tCorrespondências no aquivo: :tot_found.!\n|\tTamanho do Arquivo (Bytes): :file_size.!\n|\tTexto encontrado: :match.!\n|\tDetalhes: :metadata.!\n------------------------------------------------'
+        model = model.replace(':tot_found.!', str(item['tot_found']))
+        model = model.replace(':match.!', str(item['match']))
+        model = model.replace(':file.!', str(item['file_name']))
+        model = model.replace(':file_size.!', str(item['file_size']))
+        model = model.replace(':metadata.!', str(item['metadata']))
+        print(model)
+    print('+'+('-'*64)+'+')
 
 
 
