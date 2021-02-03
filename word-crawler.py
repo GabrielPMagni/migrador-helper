@@ -131,12 +131,12 @@ def main():
             list_sub_dir(args.dir, debug)
             found_on = search(items, query, debug)
             file_types = search_file_types(items, debug, scan_metadata)
-            if len(file_types) > 0:
-                show_file_types(file_types)
             if scan_personal:
                 personal_data = search_personal(items, search_for, debug)
                 if len(personal_data) > 0: 
                     show_personal_data(personal_data)
+            if len(file_types) > 0:
+                show_file_types(file_types)
             if found_on != None:
                 show_results(found_on, order_by)
             else:
@@ -207,7 +207,7 @@ def read_as_binary(file_name, debug=False, scan_metadata=False):
 
 
 
-def read_as_pdf(file_name:str, query:str, debug=False, scan_metadata=False):
+def read_as_pdf(file_name:str, query:str, debug=False):
     try:
         regex_query = re.compile(query, re.IGNORECASE)
         file_text = pdf.extract_text(file_name)  # lê o arquivo completo como PDF e decodifica para "ANSI"
