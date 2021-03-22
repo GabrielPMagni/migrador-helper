@@ -1,0 +1,36 @@
+telefone / celular:
+(\(?\d{2}\)?\s)?(\d{4,5}\-\d{4})
+email:
+[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*
+cpf:
+(?!(\d)\1{2}?\1{3}?\1{3}?\1{2})\d{3}?\d{3}?\d{3}?\d{2}
+cnpj:
+\d{2}\.\d{3}\.\d{3}\/\d{4}\-\d{2}
+domain name:
+[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*
+data:
+(([1-3])(\d)).?(1([1-2])).?(\d){4}|(1([1-2])).?(([1-3])(\d)).?(\d){4}|(\d){4}.?(1([1-2])).?(([1-3])(\d))
+cep:
+(\d){5}.?(\d){3}
+
+
+
+----------------------------
+Equivalente ao =esquerda() do excel (substituir "n" por qtd desejada de caracteres)
+(.{1,n})(.*)
+----------------------------
+Formatar RTF para texto
+(\{\\?.*)|(\\[^ ]+)
+----------------------------
+Completar zeros à esquerda do campo (CPF)
+^(\d{1,10})$
+Substituir por 0$1 (LibreOffice)
+
+(Adiciona zeros à esquerda quando há menos de 11 caracteres. Necessário converter células em texto antes e repetir até não haverem matches)
+----------------------------
+Substrituir separadores de .CSV por ponto para garantir compatibilidade na migração
+[;,]
+Substituir por .
+----------------------------
+Retirar tags HTML
+(<script(\s|\S)*?<\/script>)|(<style(\s|\S)*?<\/style>)|(<!--(\s|\S)*?-->)|(<\/?(\s|\S)*?>)|(&nbsp;)
