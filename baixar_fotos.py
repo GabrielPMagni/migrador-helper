@@ -1,7 +1,9 @@
 import requests as req
+import codecs
+
 nomeArquivoCSV = input('Digite o nome do arquivo a ser usado como referência: ')
 ondeSalvar = input('Digite onde salvar o arquivo: ')
-arquivoCSV = open(nomeArquivoCSV, 'r')
+arquivoCSV = codecs.open(nomeArquivoCSV, 'r', encoding='utf8', errors='ignore')
 errosNum = 0
 for index, linha in enumerate(arquivoCSV):
     try:
@@ -18,4 +20,4 @@ for index, linha in enumerate(arquivoCSV):
         print(index)
 
 arquivoCSV.close()
-print('Número de Erros: ', errosNum)
+print('Número de Erros: ', errosNum - 1)  # ignorar erro do cabeçalho
