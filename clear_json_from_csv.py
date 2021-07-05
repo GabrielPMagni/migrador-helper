@@ -20,7 +20,8 @@ def main(arquivo):
     regexes.append(r2)
     clear = regex.compile(r'(\'\w\')|(\')|[\(\)]|\,|\[|\]|\t|\"')
     for index, linha in enumerate(arquivo.readlines()):
-        model = ''
+        model = '"'
+        fields.clear()
         slice_json_fields(linha)
         for field in fields:
             tab = ''
@@ -32,7 +33,7 @@ def main(arquivo):
                     if tab != 'Exame físico':
                         model += text + '<br>'
             model += '<br>'
-        model += '\n'
+        model += '"\n'
         novoarquivo = codecs.open('novoarquivo.txt', 'a', encoding='utf-8', errors='ignore')
         novoarquivo.write(model)
     else:
