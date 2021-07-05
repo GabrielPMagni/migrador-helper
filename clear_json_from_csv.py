@@ -2,54 +2,61 @@ import re as regex
 import codecs
 
 # (""description"": ""([^""])+)|(""name": ""([^""])+)|(""value""": ""([^""])+)|(""posology"": ""([^""])+)|(""tab"": ""([^""])+)|(""text"": ""([^""])+)
+fields = []
 
 def ler_arquivo():
     arq = input('\nNome do arquivo: \n\n\t>')
     arquivo = codecs.open(arq, 'r', encoding='utf-8', errors='ignore')
-    tratar_arquivo(arquivo)
+    main(arquivo)
 
-def tratar_arquivo(arquivo):
-    # rx1 = regex.compile(r'((""text"":) ""([^""])+)')
-    # rx2 = regex.compile(r'((""posology"":) ""([^""])+)')
-    # rx3 = regex.compile(r'((""name"":) ""([^""])+)')
-    # rx4 = regex.compile(r'((""value"":) ""([^""])+)')
-    rx1 = regex.compile(r'(("text":) "([^"])+)')
-    rx2 = regex.compile(r'(("posology":) "([^"])+)')
-    rx3 = regex.compile(r'(("name":) "([^"])+)')
-    rx4 = regex.compile(r'(("value":) "([^"])+)')
-    rx5 = regex.compile(r'(("bmi_value":) "([^"])+)')
 
-    
+def main(arquivo):
+    regexes = []
+    r0 = regex.compile(r'(("tab":) "([^"])+)')
+    r1 = regex.compile(r'(("name":) "([^"])+)')
+    r2 = regex.compile(r'(("value":) "([^"])+)')
+    regexes.append(r0)
+    regexes.append(r1)
+    regexes.append(r2)
     clear = regex.compile(r'(\'\w\')|(\')|[\(\)]|\,|\[|\]|\t|\"')
-    for linha in arquivo.readlines():
-        novo_arq_txt = ret_val(rx4, clear, linha)
+    for index, linha in enumerate(arquivo.readlines()):
+        model = ''
+        slice_json_fields(linha)
+        for field in fields:
+            tab = ''
+            for index, reg in enumerate(regexes):
+                text = get_field_values(reg, clear, field)
+                if index == 0: 
+                    tab = text
+                else:
+                    if tab != 'Exame físico':
+                        model += text + '<br>'
+            model += '<br>'
+        model += '\n'
         novoarquivo = codecs.open('novoarquivo.txt', 'a', encoding='utf-8', errors='ignore')
-        novoarquivo.write(novo_arq_txt+'\n')
+        novoarquivo.write(model)
     else:
         arquivo.close()
         novoarquivo.close()
 
-def ret_val(reg, clear, linha):
-    novo_arq_txt = ''
-    try:
-        novo_arq_match = regex.finditer(reg, linha)
-        novo_arq_match = novo_arq_match if novo_arq_match else None
-        # novo_arq_txt += regex.sub(clear, '', (regex.sub(novo_arq_match.group(2), '', novo_arq_match.group(0)) + '<BR>' if novo_arq_match != None else ''))
-        # print(get_elem(novo_arq_match, 0))
-        for i in regex.finditer(reg, linha):
-            x = regex.sub(clear, '', regex.sub(i.group(2), '', i.group(1)))
-            novo_arq_txt += x + '<br>'
-    except Exception as e:
-        pass
-    finally:
-        return novo_arq_txt
 
-def get_elem(arr, n):
-    itens = ''
-    for x in arr:
-        itens += x[n]
+def slice_json_fields(line: str, last_position = 0):
+    starts_on = line.find('{', last_position)
+    ends_on = line.find('}', starts_on)
+    if starts_on == -1 or ends_on == -1:
+        return None
+    field = line[starts_on+1: ends_on]
+    fields.append(field)
+    slice_json_fields(line, ends_on+1)
+
+
+def get_field_values(reg, clear, field):
+    obj = regex.search(reg, field)
+    if obj is not None:
+        obj = regex.sub(clear, '', regex.sub(obj.group(2), '', obj.group(1))).strip()
     else:
-        return itens
+        obj = ''
+    return obj
 
-                
+
 ler_arquivo()
