@@ -8,3 +8,4 @@
 !assets/
 !assets/util_regex.txt
 !clear_json_from_csv.py
+!parse_json.py
