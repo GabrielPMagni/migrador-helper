@@ -1,57 +1,47 @@
-from gooey import Gooey, GooeyParser
+import argparse
 import re as regex
 from os import remove as rm, listdir as ls
 from random import random
 import codecs
 
-@Gooey(
-    program_name = 'Migrador Helper',
-    program_description = 'Multi funções para ajudar em migrações de banco de dados.',
-    language = 'portuguese',
-    default_size=(610, 580),
-    navigation='TABBED',
-    menu=[{'name': 'Sobre', 'items': [{'type': 'AboutDialog', 'name': 'Sobre o Migrador Helper', 'menuTitle': 'Sobre', 'description': 'Na tentativa de facilitar a vida das migrações de banco de dados', 'version': '0.5',  'developer': 'Gabriel Peres Magni','website': 'https://github.com/GabrielPMagni'}]}]
-)
 def main():
-    parser = GooeyParser()
+    parser = argparse.ArgumentParser(prog='Migrador Helper', description='Funções para ajudar em migrações de banco de dados.')
     subs = parser.add_subparsers(help="commands", dest="command")
     de_diretorio = subs.add_parser(
-        'convert_dir', prog='Converter de Diretório',
+        'from_folder', prog='Converter de Diretório',
     ).add_argument_group('')
 
     de_arquivo = subs.add_parser(
-        'convert_arq', prog='Converter de Arquivo',
+        'from_file', prog='Converter de Arquivo',
     ).add_argument_group('')
 
     # Aba de Arquivos
 
     de_arquivo.add_argument(
-        'input_files',
-        metavar='Arquivo a ser verificado:',
-        widget="MultiFileChooser",
+        '-i',
+        '--input_file',
+        help='Arquivo a ser verificado:',
         nargs = '*',
-        gooey_options=dict(wildcard="(*.dat, *.csv, *.txt)|*.dat; *.csv; *.txt", full_width=True)
     )
 
 
 
     de_arquivo.add_argument(
-        'output_file',
-        widget="FileSaver",
-        metavar='Arquivo de saída:',
-        gooey_options=dict(wildcard="(*.csv, *.txt)|*.csv; *.txt", default_file='sem_nome'+str(random())+'.csv', full_width=True)
+        '-o',
+        '--output_file',
+        help='Arquivo de saída:',
     )
 
     de_arquivo.add_argument(
         '--csv',
-        metavar='Exportar para CSV',
+        help='Exportar para CSV',
         action='store_true'
     )
 
     de_arquivo.add_argument(
         '-cd',
         '--codificacao',
-        metavar='Codificação do arquivo de origem:',
+        help='Codificação do arquivo de origem:',
         choices=['cp1252', 'utf_8'],
         default='utf_8'
     )
@@ -59,8 +49,7 @@ def main():
     de_arquivo.add_argument(
         '-de',
         '--delimitador',
-        metavar='Delimitador do arquivo CSV',
-        help='Padrão: ;'
+        help='Delimitador do arquivo CSV | Padrão: ;',
     )
 
     # Aba de Diretórios
@@ -68,29 +57,25 @@ def main():
 
     de_diretorio.add_argument(
         'dir',
-        metavar='Pasta a ser verificada',
-        widget="DirChooser",
-        gooey_options=dict(full_width=True)
+        help='Pasta a ser verificada',
     )
 
 
     de_diretorio.add_argument(
         'output_file',
-        widget="FileSaver",
-        metavar='Arquivo de saída:',
-        gooey_options=dict(wildcard="(*.csv, *.txt)|*.csv; *.txt", default_file='sem_nome'+str(random())+'.csv', full_width=True)
+        help='Arquivo de saída:',
     )
     
     de_diretorio.add_argument(
         '--csv',
-        metavar='Exportar para CSV',
+        help='Exportar para CSV',
         action='store_true'
     )
 
     de_diretorio.add_argument(
         '-cd',
         '--codificacao',
-        metavar='Codificação do arquivo de origem:',
+        help='Codificação do arquivo de origem:',
         choices=['cp1252', 'utf_8'],
         default='utf_8'
     )
@@ -98,8 +83,7 @@ def main():
     de_diretorio.add_argument(
         '-de',
         '--delimitador',
-        metavar='Delimitador do arquivo CSV',
-        help='Padrão: ;'
+        help='Delimitador do arquivo CSV | Padrão: ;',
     )
 
 
@@ -108,7 +92,7 @@ def main():
     try:
         if args.command == 'convert_arq':
             print('Iniciado processo...')
-            for index, arq in enumerate(args.input_files):
+            for index, arq in enumerate(args.input_file):
                 print('Arquivo #', index)
                 cod = args.codificacao
                 if args.delimitador != None:
