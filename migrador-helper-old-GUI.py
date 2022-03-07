@@ -1,52 +1,43 @@
-from gooey import Gooey, GooeyParser
+import argparse
 import re as regex
 from os import remove as rm, listdir as ls
 from random import random
 import codecs
 
-@Gooey(
-    program_name = 'Migrador Helper',
-    program_description = 'Multi funções para ajudar em migrações de banco de dados.',
-    default_size=(610, 580),
-    navigation='TABBED',
-    menu=[{'name': 'Sobre', 'items': [{'type': 'AboutDialog', 'name': 'Sobre o Migrador Helper', 'menuTitle': 'Sobre', 'description': 'Na tentativa de facilitar a vida das migrações de banco de dados', 'version': '1.0',  'developer': 'Gabriel Peres Magni','website': 'https://github.com/GabrielPMagni'}]}]
-)
 def main():
-    parser = GooeyParser()
+    parser = argparse.ArgumentParser(prog='Migrador Helper', description='Funções para ajudar em migrações de banco de dados.')
     subs = parser.add_subparsers(help="commands", dest="command")
     de_arquivo = subs.add_parser(
-        'convert_arq', prog='Converter de Arquivo',
+        'from_file', prog='Converter de Arquivo',
     ).add_argument_group('')
 
     # Aba de Arquivos
 
     de_arquivo.add_argument(
-        'input_files',
-        metavar='Arquivo a ser verificado:',
-        widget="MultiFileChooser",
+        '-i',
+        '--input_files',
+        help='Arquivo a ser verificado:',
         nargs = '*',
-        gooey_options=dict(wildcard="(*.dat, *.csv, *.txt)|*.dat; *.csv; *.txt", full_width=True)
     )
 
 
 
     de_arquivo.add_argument(
-        'output_file',
-        widget="FileSaver",
-        metavar='Arquivo de saída:',
-        gooey_options=dict(wildcard="(*.csv, *.txt)|*.csv; *.txt", default_file='sem_nome'+str(random())+'.csv', full_width=True)
+        '-o',
+        '--output_file',
+        help='Arquivo de saída:',
     )
 
     de_arquivo.add_argument(
         '--erros',
-        metavar='Ignorar Erros',
+        help='Ignorar Erros',
         action='store_true'
     )
 
     de_arquivo.add_argument(
         '-cd',
         '--codificacao',
-        metavar='Codificação do arquivo de origem:',
+        help='Codificação do arquivo de origem:',
         choices=['cp1252', 'utf_8', 'latin-1'],
         default='utf_8'
     )
@@ -54,21 +45,19 @@ def main():
     de_arquivo.add_argument(
         '-de',
         '--delimitador',
-        metavar='Delimitador do arquivo CSV',
-        help='Padrão: ;'
+        help='Delimitador do arquivo CSV | Padrão: ;',
     )
     
     de_arquivo.add_argument(
         '-df',
         '--delimitador_final',
-        metavar='Novo delimitador do arquivo CSV',
-        help='Padrão: ;'
+        help='Novo delimitador do arquivo CSV | Padrão: ;',
     )
 
     args = parser.parse_args()
 
     try:
-        if args.command == 'convert_arq':
+        if args.command == 'from_file':
             print('Iniciado processo...')
             cod = args.codificacao
             if args.delimitador != None:
@@ -86,15 +75,14 @@ def main():
             for index, arq in enumerate(args.input_files):
                 print('Arquivo #', index)
                 arquivo = codecs.open(arq, 'r', encoding=cod, errors=erros)
-                mOrto = ajustes
-                mOrto(arquivo, args.output_file, args.erros, cod, d, df)
+                ajustes = Ajustes(arquivo, args.output_file, args.erros, cod, d, df)
             else:
                 print('Concluído')
     except Exception as identifier:
         print('Erro ao abrir o arquivo inicial: ', str(identifier))
 
 
-class ajustes:
+class Ajustes:
     def __init__(self, arquivo_origem, arquivo_saida, opt=False, cod='utf_8', delimitador=';', delimitador2=';'):
         if not opt:
             self.erros = 'strict'
@@ -156,6 +144,7 @@ class ajustes:
         self.__novo_arq_txt = regex.sub(r'(Ã•)|(Ã“)|(Ã”)|[ÓÒÕÔÖ]', 'O', self.__novo_arq_txt)
         self.__novo_arq_txt = regex.sub(r'(Âº)|[´`ºª]', '.', self.__novo_arq_txt)
         self.__novo_arq_txt = regex.sub(r'(Ãƒ)|[ÁÃÂÀÅ]', 'A', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub(r'(&)([AEIOUaeiou])(.+;)', r'\2', self.__novo_arq_txt)
         self.__novo_arq_txt = regex.sub(r'(Ã)|[^0-9a-zA-Z\s\/\.\,\;\"\$\<\>\&\*\(\)\[\]\{\}\=\+\-\#\_\%\!\?\@]|[½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅐⅛⅜⅝⅞⅑⅒↉⅟ ]', '', self.__novo_arq_txt)
         self.__novoarquivo_temp2.write(self.__novo_arq_txt)
         self.arquivo.close()
