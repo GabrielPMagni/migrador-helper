@@ -9,3 +9,4 @@
 !assets/util_regex.txt
 !clear_json_from_csv.py
 !parse_json.py
+!hex_image_converter.py
