@@ -50,15 +50,19 @@ class HexImageConverter:
         try:
             logs_path = 'logs'
             mkdir(logs_path)
-            success_log = codecs.open(path.join(logs_path, 'events.log'), 'a+', encoding=self.codification, errors='strict')
-            error_log = codecs.open(path.join(logs_path, 'errors.log'), 'a+', encoding=self.codification, errors='strict')
-            return {success_log, error_log}
-        except PermissionError:
-            print('Sem permissão para criar arquivos de log.')
-            exit(1)
-        except Exception as e:
-            print(f'Erro não tratado ao tentar abrir criar arquivos de log: {str(e)}')
-            exit(1)
+        except FileExistsError:
+            pass
+        finally:
+            try:
+                success_log = codecs.open(path.join(logs_path, 'events.log'), 'a+', encoding=self.codification, errors='strict')
+                error_log = codecs.open(path.join(logs_path, 'errors.log'), 'a+', encoding=self.codification, errors='strict')
+                return {success_log, error_log}
+            except PermissionError:
+                print('Sem permissão para criar arquivos de log.')
+                exit(1)
+            except Exception as e:
+                print(f'Erro não tratado ao tentar abrir criar arquivos de log: {str(e)}')
+                exit(1)
 
 
 
