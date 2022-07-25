@@ -145,7 +145,7 @@ class Ajustes:
         self.__novo_arq_txt = regex.sub(r'(Âº)|[´`ºª]', '.', self.__novo_arq_txt)
         self.__novo_arq_txt = regex.sub(r'(Ãƒ)|[ÁÃÂÀÅ]', 'A', self.__novo_arq_txt)
         self.__novo_arq_txt = regex.sub(r'(&)([AEIOUCaeiouc])(.+;)', r'\2', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub(r'(Ã)|[^0-9a-zA-Z\s\/\.\,\;\"\$\<\>\&\*\(\)\[\]\{\}\=\+\-\#\_\%\!\?\@]|[½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅐⅛⅜⅝⅞⅑⅒↉⅟ ]', '', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub(r'(Ã)|[^0-9a-zA-Z\s\/\.\,\;\:\"\$\<\>\&\*\(\)\[\]\{\}\=\+\-\#\_\%\!\?\@]|[½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅐⅛⅜⅝⅞⅑⅒↉⅟ ]', '', self.__novo_arq_txt)
         self.__novoarquivo_temp2.write(self.__novo_arq_txt)
         self.arquivo.close()
         self.__novoarquivo_temp2.close()
