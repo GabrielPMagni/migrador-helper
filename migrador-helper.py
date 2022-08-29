@@ -1,191 +1,159 @@
-try:
-    import re as regex
-    from os import remove as rm
-    import csv
-    from random import random
-    import codecs
-except ModuleNotFoundError as identifier:
-    print('Erro ao importar bibliotecas.')
-
+import argparse
+import re as regex
+from os import remove as rm, listdir as ls
+from random import random
+import codecs
 
 def main():
-    """
-    Solicita o nome do arquivo a ser verificado e retorna o mesmo ou falso em caso em caso de erro.
-    """
-    while True:
-        pergunta = input('Digite o nome do arquivo a ser verificado: \n\n\t>')
-        try:
-            arquivo = codecs.open(pergunta, 'r', encoding='iso-8859-1', errors='replace')
-        except KeyboardInterrupt:
-            print('\n\nProcesso cancelado pelo usuário.')
-            exit(3)
-        except FileNotFoundError as identifier:
-            print('Erro ao abrir o arquivo inicial: ', str(identifier))
+    parser = argparse.ArgumentParser(prog='Migrador Helper', description='Funções para ajudar em migrações de banco de dados.')
+    subs = parser.add_subparsers(help="commands", dest="command")
+    de_arquivo = subs.add_parser(
+        'from_file', prog='Converter de Arquivo',
+    ).add_argument_group('')
+
+    # Aba de Arquivos
+
+    de_arquivo.add_argument(
+        '-i',
+        '--input_files',
+        help='Arquivo a ser verificado:',
+        nargs = '*',
+    )
+
+
+
+    de_arquivo.add_argument(
+        '-o',
+        '--output_file',
+        help='Arquivo de saída:',
+    )
+
+    de_arquivo.add_argument(
+        '--erros',
+        help='Ignorar Erros',
+        action='store_true'
+    )
+
+    de_arquivo.add_argument(
+        '-cd',
+        '--codificacao',
+        help='Codificação do arquivo de origem:',
+        choices=['cp1252', 'utf_8', 'latin-1'],
+        default='utf_8'
+    )
+
+    de_arquivo.add_argument(
+        '-de',
+        '--delimitador',
+        help='Delimitador do arquivo CSV | Padrão: ;',
+    )
+    
+    de_arquivo.add_argument(
+        '-df',
+        '--delimitador_final',
+        help='Novo delimitador do arquivo CSV | Padrão: ;',
+    )
+
+    args = parser.parse_args()
+
+    try:
+        if args.command == 'from_file':
+            print('Iniciado processo...')
+            cod = args.codificacao
+            if args.delimitador != None:
+                d = args.delimitador
+            else:
+                d = ';'
+            if args.delimitador_final != None:
+                df = args.delimitador_final
+            else:
+                df = ';'
+            if not args.erros:
+                erros = 'strict'
+            else:
+                erros = 'ignore'
+            for index, arq in enumerate(args.input_files):
+                print('Arquivo #', index)
+                arquivo = codecs.open(arq, 'r', encoding=cod, errors=erros)
+                ajustes = Ajustes(arquivo, args.output_file, args.erros, cod, d, df)
+            else:
+                print('Concluído')
+    except Exception as identifier:
+        print('Erro ao abrir o arquivo inicial: ', str(identifier))
+
+
+class Ajustes:
+    def __init__(self, arquivo_origem, arquivo_saida, opt=False, cod='utf_8', delimitador=';', delimitador2=';'):
+        if not opt:
+            self.erros = 'strict'
         else:
-            while True:
-                try:
-                    oqfzr = int(input('O que deseja fazer?\n0-Sair\n1- Escolher outro arquivo'
-                    + '\n2-Exportar CSV com um delimitador para CSV delimitado com vírgula'))
-                    if oqfzr not in range(0, 3):
-                        raise ValueError
-                except ValueError:
-                    print('\n\nDigite somente números entre as opções válidas.')
-                except KeyboardInterrupt:
-                    print('\n\nProcesso cancelado pelo usuário.')
-                    exit(3)
-
-                else:
-                    if oqfzr == 0:
-                        oqfzr = None
-                        arquivo = None
-                        pergunta = None
-                        del oqfzr, arquivo, pergunta
-                        exit(3)
-                    elif oqfzr == 1:
-                        oqfzr = None
-                        arquivo = None
-                        pergunta = None
-                        del oqfzr, arquivo, pergunta
-                        main()
-
-
-
-class Modelo:
-    def __init__(self, arquivoOrigem, opt=1):  # Modelo pai para outras classes com parâmetros sendo arquivo de origem e o que fazer
+            self.erros = 'ignore'
+        self.cod = cod
+        self.delimitador = delimitador
+        self.delimitador2 = delimitador2
+        self.arquivo_saida = arquivo_saida
+        self.arquivo_origem = arquivo_origem
         self.__nomeArquivoTemp2 = 'temp2.tmp'
-        self.__nomeTempFinal = 'temp_final.tmp'
         try:
-            if (arquivoOrigem):                
-                self.__novoarquivo_temp2 = codecs.open(self.__nomeArquivoTemp2, 'w', encoding='iso-8859-1', errors='ignore')
-                self.arquivo = arquivoOrigem
+            if (arquivo_origem):                
+                self.__novoarquivo_temp2 = codecs.open(self.__nomeArquivoTemp2, 'w', encoding=self.cod, errors=self.erros)
+                self.arquivo = arquivo_origem
             else:
                 return None
         except Exception as identifier:
             print('Erro ao abrir o arquivo: ', str(identifier))
         else:
             try:
-                if oqfzr == 1:
-                    print('Iniciado...')
-                    self.formatarArquivo()
-                    print('25% concluído...')
-                    self.tratarEExportarParaCSVcomVirgula()
-                    print('Concluído!')
-                else:
-                    print('Nope')
-                    exit(2)
+                self.formatarArquivo()
+                self.tratarEExportarParaCSVcomVirgula()
+                self.finalizar()
             except KeyboardInterrupt as identifier:
                 print('Cancelado processo pelo usuário.')
 
 
-class CSV(Modelo):
     def tratarEExportarParaCSVcomVirgula(self):
-            try:
-                arqCSV = codecs.open(self.__nomeArquivoTemp2, 'r',  encoding='iso-8859-1', errors='ignore')
-                arqCSVNovoNome = arqCSV.name+'novo.csv'
-                arqCSVNovo = codecs.open(arqCSVNovoNome, 'w',  encoding='iso-8859-1', errors='ignore')
-            except Exception as identifier:
-                print('???', str(identifier))
-            else:
-                delimitador = input('Digite o delimitador do arquivo a ser exportado (padrão=;): \n\n\t>')
-                if delimitador == '\\t':
-                    delimitador = '\t'
-                elif delimitador == '\\n':
-                    delimitador = '\n'
-                elif delimitador == '':
-                    delimitador = ';'
-                for linha in arqCSV:
-                    tmp = linha.replace(delimitador, ',')
-                    arqCSVNovo.write(tmp)
-                    tmp = None
-
-
-class ajustaOrto8DAT(Modelo):
-
-    def __finalizar(self):
-        self.__nomeArquivoFinal = 'resultadoOrto'+str(random())+'.txt'
         try:
-            self.__arquivoFinal = codecs.open(self.__nomeArquivoFinal, 'w', encoding='iso-8859-1', errors='ignore')
-            self.__novoarquivo_temp = codecs.open(self.__nomeTempFinal, 'r', encoding='iso-8859-1', errors='ignore')
+            arqCSV = codecs.open(self.__nomeArquivoTemp2, 'r',  encoding=self.cod, errors=self.erros)
+            arqCSVNovoNome = self.arquivo_saida
+            arqCSVNovo = codecs.open(arqCSVNovoNome, 'w',  encoding=self.cod, errors=self.erros)
         except Exception as identifier:
-            print('Erro ao finalizar: ', str(identifier))
+            print('???', str(identifier))
         else:
-            self.__listaNomes = []
-            for self.__index, self.__linha in enumerate(self.__novoarquivo_temp):
-                if self.__linha not in self.__listaNomes:
-                    self.__listaNomes.append(self.__linha)
-                    self.__arquivoFinal.write(self.__linha + '\n')
-                    if self.__index > 20:
-                        break            
-                
+            for linha in arqCSV:
+                tmp = linha.replace(self.delimitador, self.delimitador2)
+                arqCSVNovo.write(tmp)
+                tmp = None
 
-    def __temp_final(self):
-        self.__novoarquivo_temp2 = codecs.open(self.__nomeArquivoTemp2, 'r', encoding='iso-8859-1', errors='ignore')
-        self.__novoarquivo_temp = codecs.open(self.__nomeTempFinal, 'w', encoding='iso-8859-1', errors='ignore')
-        self.__conjuntoAnterior = ''
-        for self.__linha_counter, self.__linha in enumerate(self.__novoarquivo_temp2):
-            for self.__conjunto in self.__linha.split('\t'):
-                if self.__conjuntoAnterior == '':
-                    self.__conjuntoAnterior = self.__conjunto
-                self.__palavra = self.__conjunto.split()
-                self.__palavraAnterior = self.__conjuntoAnterior.split()
-                self.__conjuntoAnterior = self.__conjunto
-                if (self.__palavra and self.__palavraAnterior):
-                    if self.__palavra[0] == self.__palavraAnterior[-1]:
-                        if self.__palavraAnterior[0].isdigit():
-                            self.__palavraAnterior.remove(self.__palavraAnterior[0])
-                        self.__achado = ' '.join(self.__palavraAnterior)
-                        regex.sub('^(_)|^(\s)|^(\d)', '', self.__achado)
-                        expRgl = regex.match('^(([a-z])([A-Z]))|^(([A-Z])([A-Z]))|^([\W])', self.__achado)
-                        if expRgl != None:
-                            x = expRgl.lastindex
-                            self.__achado = self.__achado.replace(self.__achado[:x], '')
-                        self.__local = self.__linha.find(self.__achado)
-                        self.__paraLista = []
-                        self.__paraLista[:0] = self.__linha
-                        self.__paraLista.insert(self.__local, '\n')
-                        self.__novalinha = ''.join(self.__paraLista)
-                        self.__novoarquivo_temp.write(self.__novalinha)
-        else:
-            # limpar memória e salvar
-            self.__achado = None
-            self.__linha = None
-            del self.__linha
-            del self.__achado
-            self.__novoarquivo_temp2.close()
-            self.__novoarquivo_temp.close()
-            rm(self.__nomeArquivoTemp2)
+
+    def finalizar(self):
+        rm('temp2.tmp')
 
 
     def formatarArquivo(self):
-        if not self.arquivo.name.lower().endswith('.csv'):
-            self.__novo_arq_txt = regex.sub('\s{2,}[^\\n\w]', '\t', self.arquivo.read().replace('\n', '   '))
-        else:
-            self.__novo_arq_txt = self.arquivo.read()
-        self.__novo_arq_txt = regex.sub('[,´`ºª]', '.', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub('[ÚÙÛ]', 'U', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub('[úùû]', 'u', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub('[íìî¡]', 'i', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub('[ÍÌÎ]', 'I', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub('[éèê]', 'e', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub('[ÉÈÊ]', 'E', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub('[ÓÒÕÔ]', 'O', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub('[óòõô]', 'o', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub('[áàãâ]', 'a', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub('[ÁÃÂÀÅ]', 'A', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub('[ç]', 'c', self.__novo_arq_txt)
-        self.__novo_arq_txt = regex.sub('[Ç]', 'C', self.__novo_arq_txt)
-        if not self.arquivo.name.lower().endswith('.csv'):
-            self.__novo_arq_txt = regex.sub('[^\w\s]', '', self.__novo_arq_txt)
+        self.__novo_arq_txt = self.arquivo.read()
+        self.__novo_arq_txt = regex.sub(r'(Ã³)|(├Á)|(├\│)|(Ã´)|[óòõôö]', 'o', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub(r'(Ã£)|(Ã¢)|(Ã¡)|(├ú)|(├í)|[áàãâ]', 'a', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub(r'(├º)|(Ã§)|[ç]', 'c', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub(r'(Ã‡)|[Ç]', 'C', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub(r'(ÃŠ)|[ÚÙÛÜ]', 'U', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub(r'(Ãº)|(├║)|[úùûü]', 'u', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub(r'(├¡)|(Ã-)|[íìî]', 'i', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub(r'[ÍÌÎ]', 'I', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub(r'(Ã©)|(├¬)|(├®)|[éèê]', 'e', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub(r'(Ã‰)|[ÉÈÊ]', 'E', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub(r'(Ã•)|(Ã“)|(Ã”)|[ÓÒÕÔÖ]', 'O', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub(r'(Âº)|[´`ºª]', '.', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub(r'(Ãƒ)|[ÁÃÂÀÅ]', 'A', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub(r'(&)([AEIOUCNaeioucn])(.+?;)', r'\2', self.__novo_arq_txt)
+        self.__novo_arq_txt = regex.sub(r'(Ã)|[^0-9a-zA-Z\s\/\.\,\;\:\"\$\<\>\&\*\(\)\[\]\{\}\=\+\-\#\_\%\!\?\@]|[½⅓⅔¼¾⅕⅖⅗⅘⅙⅚⅐⅛⅜⅝⅞⅑⅒↉⅟ ]', '', self.__novo_arq_txt)
         self.__novoarquivo_temp2.write(self.__novo_arq_txt)
         self.arquivo.close()
         self.__novoarquivo_temp2.close()
         self.__novo_arq_txt = None
         del self.__novo_arq_txt
 
-x, y = main()
-ajustaOrto8DAT(x, y)
+if __name__ == '__main__':
+    main()
 
 
-
-# ainda sem funcionamento
 
